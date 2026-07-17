@@ -1,10 +1,7 @@
 /.idea
 TEST_PLAN.md
 /openLLV.egg-info
-/openLLV/__pycache__
-/openLLV/evaluation/__pycache__
-*.pyc
-/openLLV/data/datasets/__pycache__
-
+__pycache__/
+*.py[cod]
 /tmp
 
