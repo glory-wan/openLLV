@@ -409,9 +409,9 @@ openllv list
 ```python
 import openLLV as llv
 
-image = llv.imread("input.jpg", output_format="pil")
+image = llv.imread("input.jpg")
 array = llv.imread("input.jpg", output_format="numpy")
-saved_path = llv.imwrite(image, "results/copy.png")
+saved_path = llv.imwrite("url/to/an/image", "results/copy.png")
 ```
 
 ### Traditional prediction
@@ -422,10 +422,9 @@ Pass a registered algorithm name and its constructor parameters:
 import openLLV as llv
 
 enhanced, saved_path = llv.predict(
-    "Gamma",
-    "input.jpg",
-    output="results/gamma.png",
-    gamma=0.8,
+    method="HE",
+    source="input.jpg",
+    output="results/he.png",
 )
 ```
 
@@ -433,14 +432,12 @@ Directory input is processed recursively and returns saved output paths:
 
 ```python
 saved_paths = llv.predict(
-    "RCLAHE",
-    "images/",
+    "CLAHE",
+    source="path/to/images/dir",
     output="results/rclahe",
     color_space="hsv",
     clip_limit=2.0,
     tile_grid_size=(8, 8),
-    iterations=2,
-    progress_bar=True,
 )
 ```
 
@@ -448,6 +445,8 @@ CLI equivalent:
 
 ```bash
 openllv predict Gamma input.jpg -o results/gamma.png --kwargs gamma=0.8
+# or
+llv predict Gamma input.jpg -o results/gamma.png --kwargs gamma=0.8
 ```
 
 ### Deep-learning prediction
@@ -459,9 +458,17 @@ by `LLVModel` or `Trainer`:
 import openLLV as llv
 
 enhanced, saved_path = llv.predict(
-    "checkpoints/ZeroDCE_CommonDataset/checkpoints/best.pt",
-    "input.jpg",
+    method="path/to/checkpoint/best.pt",
+    source="input.jpg",
     output="results/zero_dce.png",
+    device="cuda",
+)
+
+# or batch process
+res = llv.predict(
+    method="path/to/checkpoint/best.pt",
+    source="path/to/images/dir",
+    output="results/",
     device="cuda",
 )
 ```
@@ -473,36 +480,8 @@ enhanced, saved_path = llv.predict(
     "ZeroDCE",
     "input.jpg",
     output="results/zero_dce_untrained.png",
-    device="cpu",
 )
 ```
-
-In the second example the model is newly initialized. It demonstrates API and
-model construction only; it does not provide pretrained enhancement quality.
-Raw upstream state dictionaries do not include openLLV model metadata and must
-be loaded into the matching model class manually.
-
-The Predictor owns device placement. `LLVModel` deliberately does not store or
-manage device state.
-
-### Unified Predictor object
-
-```python
-from openLLV import Predictor
-
-predictor = Predictor(
-    "Gamma",
-    backend="traditional",
-    output_dir="results/gamma",
-    gamma=0.8,
-)
-
-enhanced, saved_path = predictor("input.jpg")
-```
-
-Use `backend="deep"` for a learned model. With `backend="auto"`, openLLV
-selects the backend from the registered name, instance type, or checkpoint
-suffix.
 
 ### Training
 
@@ -511,15 +490,16 @@ Train a registered model using a packaged configuration:
 ```python
 import openLLV as llv
 
-result = llv.train(
-    "ZeroDCE",
-    root_dir="datasets/my_dataset",
-    epochs=10,
-    batch_size=4,
-    device="cuda",
-)
+if __name__ == '__main__':
+    result = llv.train(
+        "sci",
+        root_dir="path/to/dataset/root",
+        epochs=10,
+        batch_size=2,
+        device="cuda",
+    )
 
-print(result["checkpoint_dir"])
+    print(result["checkpoint_dir"])
 ```
 
 The preferred paired dataset layout is:
