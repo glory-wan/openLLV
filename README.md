@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>openLLV</h1>
+  <h1>OpenLLV</h1>
+
 
   <p>
     An open and extensible Python toolkit for low-level vision.
