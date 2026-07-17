@@ -62,20 +62,6 @@ supported algorithms yet.
 - Extensible registries for models, losses, datasets, algorithms, and metrics.
 - English and Chinese documentation with the same directory structure.
 
-## Current Scope
-
-| Domain | Current built-in support | Status |
-| --- | --- | --- |
-| Low-light image enhancement (`llie`) | 17 learned models and 8 traditional methods | Implemented |
-| General enhancement | HE, AHE, CLAHE, RCLAHE | Implemented |
-| Dehazing | Traditional DCP/Dark Channel | Implemented |
-| All-in-one restoration, deblurring, denoising, deraining, super-resolution, underwater enhancement, and other LLV tasks | Task-oriented package structure | Planned |
-
-The reserved task packages make it possible to add new domains while keeping
-the same public API, registry, Predictor, Trainer, data, and evaluation
-infrastructure. An empty task package is not evidence that an algorithm in that
-domain has already been implemented.
-
 ## Documentation
 
 This README provides a compact introduction. Use the complete documentation for
@@ -128,6 +114,248 @@ Some evaluation metrics use `pyiqa` and may initialize metric-specific model
 weights. Deep-learning inference with meaningful visual quality also requires
 compatible trained weights; the repository does not imply that randomly
 initialized networks are pretrained.
+
+## Supported Components
+
+### DeepLearning Models
+
+<details open>
+<summary>Low-Light Image Enhancement (LLIE)</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+| LLNet | 2017 | Pattern Recognition | [paper](https://doi.org/10.1016/j.patcog.2016.06.008) | [code](https://github.com/kglore/llnet_color) | - |
+| KinD | 2019 | ACM MM | [paper](https://doi.org/10.1145/3343031.3350926) | [code](https://github.com/zhangyhuaee/KinD) | - |
+| Zero-DCE | 2020 | CVPR | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Guo_Zero-Reference_Deep_Curve_Estimation_for_Low-Light_Image_Enhancement_CVPR_2020_paper.pdf) | [code](https://github.com/Li-Chongyi/Zero-DCE) | CC BY-NC 4.0 |
+| Zero-DCE++ | 2021 | IEEE TPAMI | [paper](https://ieeexplore.ieee.org/document/9369102/) | [code](https://github.com/Li-Chongyi/Zero-DCE_extension) | CC BY-NC 4.0 |
+| RUAS | 2021 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2021/papers/Liu_Retinex-Inspired_Unrolling_With_Cooperative_Prior_Architecture_Search_for_Low-Light_Image_CVPR_2021_paper.pdf) | [code](https://github.com/KarelZhang/RUAS) | - |
+| KinD++ | 2021 | IJCV | [paper](https://doi.org/10.1007/s11263-020-01407-x) | [code](https://github.com/zhangyhuaee/KinD_plus) | - |
+| EnlightenGAN | 2021 | IEEE TIP | [paper](https://doi.org/10.1109/TIP.2021.3051462) | [code](https://github.com/VITA-Group/EnlightenGAN) | - |
+| SCI | 2022 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2022/papers/Ma_Toward_Fast_Flexible_and_Robust_Low-Light_Image_Enhancement_CVPR_2022_paper.pdf) | [code](https://github.com/vis-opt-group/SCI) | - |
+| URetinex-Net | 2022 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2022/papers/Wu_URetinex-Net_Retinex-Based_Deep_Unfolding_Network_for_Low-Light_Image_Enhancement_CVPR_2022_paper.pdf) | [code](https://github.com/AndersonYong/URetinex-Net) | MIT |
+| LEDNet | 2022 | ECCV | [paper](https://arxiv.org/pdf/2202.03373) | [code](https://github.com/sczhou/LEDNet) | S-Lab License 1.0 |
+| LLFlow | 2022 | AAAI | [paper](https://doi.org/10.1609/aaai.v36i3.20162) | [code](https://github.com/wyf0912/LLFlow) | CC BY-NC-SA 4.0 |
+| RetinexFormer | 2023 | ICCV | [paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Cai_Retinexformer_One-stage_Retinex-based_Transformer_for_Low-light_Image_Enhancement_ICCV_2023_paper.pdf) | [code](https://github.com/caiyuanhao1998/Retinexformer) | - |
+| PairLIE | 2023 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2023/papers/Fu_Learning_a_Simple_Low-Light_Image_Enhancer_From_Paired_Low-Light_Instances_CVPR_2023_paper.pdf) | [code](https://github.com/zhenqifu/PairLIE) | - |
+| LLFormer | 2023 | AAAI (Oral) | [paper](https://arxiv.org/abs/2212.11548) | [code](https://github.com/TaoWangzj/LLFormer) | CC BY-NC-SA 4.0 |
+| Zero-IG | 2024 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Shi_ZERO-IG_Zero-Shot_Illumination-Guided_Joint_Denoising_and_Adaptive_Enhancement_for_Low-Light_CVPR_2024_paper.pdf) | [code](https://github.com/Doyle59217/ZeroIG) | - |
+| DarkIR | 2025 | CVPR | [paper](https://openaccess.thecvf.com/content/CVPR2025/papers/Feijoo_DarkIR_Robust_Low-Light_Image_Restoration_CVPR_2025_paper.pdf) | [code](https://github.com/cidautai/DarkIR) | MIT |
+| HVI-CIDNet | 2025 | CVPR | [paper](https://arxiv.org/abs/2502.20272) | [code](https://github.com/Fediory/HVI-CIDNet) | MIT |
+
+The license column reports the license explicitly stated by each upstream
+repository. A `-` means that no explicit upstream license was confirmed; a
+public repository without a license does not by itself grant reuse rights.
+Some listed licenses restrict commercial use and are not OSI-approved
+open-source licenses.
+
+</details>
+
+<details>
+<summary>All-in-One Image Restoration (AiOIR)</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Deblurring</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Dehazing</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Denoising</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Deraining</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>IC</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>IRR</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>ISR</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>JAR</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Super-Resolution (SR)</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Underwater Image Enhancement (UIE)</summary>
+
+| Model | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+### Traditional Algorithms
+
+<details open>
+<summary>Base Methods</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+| HE | 1977 | Computer Graphics and Image Processing | [paper](https://doi.org/10.1016/S0146-664X(77)80011-7) | - | - |
+| AHE | 1987 | Computer Vision, Graphics, and Image Processing | [paper](https://doi.org/10.1016/S0734-189X(87)80186-X) | - | - |
+| CLAHE | 1994 | Graphics Gems IV | [paper](https://doi.org/10.1016/B978-0-12-336156-1.50061-6) | - | - |
+| RCLAHE | - | - | [CLAHE source](https://ieeexplore.ieee.org/document/109340/) | - | - |
+
+</details>
+
+<details open>
+<summary>Low-Light Image Enhancement (LLIE)</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+| SSR | 1997 | IEEE TIP | [paper](https://doi.org/10.1109/83.557356) | - | - |
+| MSR | 1997 | IEEE TIP | [paper](https://doi.org/10.1109/83.597272) | - | - |
+| MSRCR | 1997 | IEEE TIP | [paper](https://doi.org/10.1109/83.597272) | - | - |
+| NPE | 2013 | IEEE TIP | [paper](https://doi.org/10.1109/TIP.2013.2261309) | - | - |
+| BIMEF | 2017 | arXiv | [paper](https://doi.org/10.48550/arXiv.1711.00591) | - | - |
+| LIME | 2017 | IEEE TIP | [paper](https://doi.org/10.1109/TIP.2016.2639450) | - | - |
+| GCP | 2024 | Pattern Recognition | [paper](https://www.sciencedirect.com/science/article/abs/pii/S0031320323006994) | [code](https://github.com/TripleJ2543/Low_Light_Pattern_Recognition_2023) | - |
+| Gamma | - | - | - | - | - |
+
+</details>
+
+<details open>
+<summary>Dehazing</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+| DCP / DarkChannel | 2009 | CVPR | [paper](https://ieeexplore.ieee.org/document/5206515) | - | - |
+
+</details>
+
+<details>
+<summary>All-in-One Image Restoration (AiOIR)</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Deblurring</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Denoising</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Deraining</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>IC</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>IRR</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>ISR</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>JAR</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Super-Resolution (SR)</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
+
+<details>
+<summary>Underwater Image Enhancement (UIE)</summary>
+
+| Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
+| --- | --- | --- | --- | --- | --- |
+
+</details>
 
 ## Quick Start
 
@@ -365,68 +593,6 @@ CLI equivalent:
 openllv evaluate --en results/enhanced --ref datasets/reference --metrics PSNR SSIM --save-path results/evaluation.json
 ```
 
-## Supported Components
-
-### Deep-learning models
-
-All current learned models use `task = "llie"` and inherit directly from
-`LLVModel`.
-
-| Model | Year | Venue | Documentation | Paper | Official source | Upstream license |
-| --- | --- | --- | --- | --- | --- | --- |
-| LLNet | 2017 | Pattern Recognition | [docs](docs/models/llie/llnet.md) | [paper](https://doi.org/10.1016/j.patcog.2016.06.008) | [code](https://github.com/kglore/llnet_color) | - |
-| KinD | 2019 | ACM MM | [docs](docs/models/llie/kind.md) | [paper](https://doi.org/10.1145/3343031.3350926) | [code](https://github.com/zhangyhuaee/KinD) | - |
-| Zero-DCE | 2020 | CVPR | [docs](docs/models/llie/zero-dce.md) | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Guo_Zero-Reference_Deep_Curve_Estimation_for_Low-Light_Image_Enhancement_CVPR_2020_paper.pdf) | [code](https://github.com/Li-Chongyi/Zero-DCE) | CC BY-NC 4.0 |
-| Zero-DCE++ | 2021 | IEEE TPAMI | [docs](docs/models/llie/zero-dce++.md) | [paper](https://ieeexplore.ieee.org/document/9369102/) | [code](https://github.com/Li-Chongyi/Zero-DCE_extension) | CC BY-NC 4.0 |
-| RUAS | 2021 | CVPR | [docs](docs/models/llie/ruas.md) | [paper](https://openaccess.thecvf.com/content/CVPR2021/papers/Liu_Retinex-Inspired_Unrolling_With_Cooperative_Prior_Architecture_Search_for_Low-Light_Image_CVPR_2021_paper.pdf) | [code](https://github.com/KarelZhang/RUAS) | - |
-| KinD++ | 2021 | IJCV | [docs](docs/models/llie/kind++.md) | [paper](https://doi.org/10.1007/s11263-020-01407-x) | [code](https://github.com/zhangyhuaee/KinD_plus) | - |
-| EnlightenGAN | 2021 | IEEE TIP | [docs](docs/models/llie/enlightengan.md) | [paper](https://doi.org/10.1109/TIP.2021.3051462) | [code](https://github.com/VITA-Group/EnlightenGAN) | - |
-| SCI | 2022 | CVPR | [docs](docs/models/llie/sci.md) | [paper](https://openaccess.thecvf.com/content/CVPR2022/papers/Ma_Toward_Fast_Flexible_and_Robust_Low-Light_Image_Enhancement_CVPR_2022_paper.pdf) | [code](https://github.com/vis-opt-group/SCI) | - |
-| URetinex-Net | 2022 | CVPR | [docs](docs/models/llie/uretinex-net.md) | [paper](https://openaccess.thecvf.com/content/CVPR2022/papers/Wu_URetinex-Net_Retinex-Based_Deep_Unfolding_Network_for_Low-Light_Image_Enhancement_CVPR_2022_paper.pdf) | [code](https://github.com/AndersonYong/URetinex-Net) | MIT |
-| LEDNet | 2022 | ECCV | [docs](docs/models/llie/lednet.md) | [paper](https://arxiv.org/pdf/2202.03373) | [code](https://github.com/sczhou/LEDNet) | S-Lab License 1.0 |
-| LLFlow | 2022 | AAAI | [docs](docs/models/llie/llflow.md) | [paper](https://doi.org/10.1609/aaai.v36i3.20162) | [code](https://github.com/wyf0912/LLFlow) | CC BY-NC-SA 4.0 |
-| RetinexFormer | 2023 | ICCV | [docs](docs/models/llie/retinexformer.md) | [paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Cai_Retinexformer_One-stage_Retinex-based_Transformer_for_Low-light_Image_Enhancement_ICCV_2023_paper.pdf) | [code](https://github.com/caiyuanhao1998/Retinexformer) | - |
-| PairLIE | 2023 | CVPR | [docs](docs/models/llie/pairlie.md) | [paper](https://openaccess.thecvf.com/content/CVPR2023/papers/Fu_Learning_a_Simple_Low-Light_Image_Enhancer_From_Paired_Low-Light_Instances_CVPR_2023_paper.pdf) | [code](https://github.com/zhenqifu/PairLIE) | - |
-| LLFormer | 2023 | AAAI Oral | [docs](docs/models/llie/llformer.md) | [paper](https://arxiv.org/abs/2212.11548) | [code](https://github.com/TaoWangzj/LLFormer) | CC BY-NC-SA 4.0 |
-| Zero-IG | 2024 | CVPR | [docs](docs/models/llie/zero-ig.md) | [paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Shi_ZERO-IG_Zero-Shot_Illumination-Guided_Joint_Denoising_and_Adaptive_Enhancement_for_Low-Light_CVPR_2024_paper.pdf) | [code](https://github.com/Doyle59217/ZeroIG) | - |
-| DarkIR | 2025 | CVPR | [docs](docs/models/llie/darkir.md) | [paper](https://openaccess.thecvf.com/content/CVPR2025/papers/Feijoo_DarkIR_Robust_Low-Light_Image_Restoration_CVPR_2025_paper.pdf) | [code](https://github.com/cidautai/DarkIR) | MIT |
-| HVI-CIDNet | 2025 | CVPR | [docs](docs/models/llie/cidnet.md) | [paper](https://arxiv.org/abs/2502.20272) | [code](https://github.com/Fediory/HVI-CIDNet) | MIT |
-
-The license column reports the license stated by each upstream repository. A
-`-` means no explicit upstream license has been confirmed by this table; public
-source availability alone does not grant reuse rights. Several listed licenses
-restrict commercial use and are not OSI-approved open-source licenses. See the
-[License](#license-and-upstream-notices) section before redistributing code or
-weights.
-
-### Traditional algorithms
-
-| Domain | Algorithm | Documentation |
-| --- | --- | --- |
-| Base method | HE | [docs](docs/algorithms/base_methods/he.md) |
-| Base method | AHE | [docs](docs/algorithms/base_methods/ahe.md) |
-| Base method | CLAHE | [docs](docs/algorithms/base_methods/clahe.md) |
-| Base method | RCLAHE | [docs](docs/algorithms/base_methods/rclahe.md) |
-| Dehazing | DCP / DarkChannel | [docs](docs/algorithms/dehazing/dcp.md) |
-| LLIE | Gamma | [docs](docs/algorithms/llie/gamma.md) |
-| LLIE | BIMEF | [docs](docs/algorithms/llie/bimef.md) |
-| LLIE | GCP | [docs](docs/algorithms/llie/gcp.md) |
-| LLIE | LIME | [docs](docs/algorithms/llie/lime.md) |
-| LLIE | NPE | [docs](docs/algorithms/llie/npe.md) |
-| LLIE | SSR | [Retinex docs](docs/algorithms/llie/retinex.md) |
-| LLIE | MSR | [Retinex docs](docs/algorithms/llie/retinex.md) |
-| LLIE | MSRCR | [Retinex docs](docs/algorithms/llie/retinex.md) |
-
-### Evaluation metrics
-
-| Type | Metrics | Additional backend |
-| --- | --- | --- |
-| Full-reference | PSNR, SSIM, MSE, MAE, LPIPS, LOE | LPIPS uses `pyiqa` |
-| No-reference | NIQE, MUSIQ, PI | `pyiqa` |
-
-See the [evaluation guide](docs/guide/evaluate.md) and
-[custom metric guide](docs/custom/metric.md).
-
 ## Architecture and Extension System
 
 openLLV registers major components automatically after their implementation
@@ -539,11 +705,6 @@ Collect tests without executing them:
 python -m pytest --collect-only -q test
 ```
 
-The release-level testing requirements, model matrix, platform coverage,
-packaging checks, CI design, and publication gates are defined in
-[TEST_PLAN.md](TEST_PLAN.md). Passing only the existing unit tests is not by
-itself sufficient to declare a public release ready.
-
 ## Contributing
 
 Contributions are welcome. Useful contributions include:
@@ -581,13 +742,15 @@ hina778bainian@gmail.com
 
 ## Citation
 
-Citation metadata for openLLV will be added after the first public release.
+If you use OpenLLV in your research, please cite it as below:
 
 ```bibtex
 @misc{openllv,
-  title  = {openLLV: An Open-source and Extensible Toolkit for Unified Low-Level Vision},
+  title  = {openLLV: An Open-source and Extensible Toolkit for Low-Level Vision},
   author = {Wan, Glory and Zhou, Qiyang},
   year   = {2026},
-  note   = {Version 0.1.0; citation details to be finalized}
+  Version= {0.1.0},
+  url = {https://github.com/glory-wan/openLLV},
+  publisher = {Github}
 }
 ```
