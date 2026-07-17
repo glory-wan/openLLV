@@ -6,3 +6,4 @@ TEST_PLAN.md
 *.pyc
 /openLLV/evaluation/__pycache__
 *.pyc
+/openLLV/data/datasets/__pycache__
