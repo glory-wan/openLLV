@@ -3,7 +3,9 @@
 from abc import ABC, abstractmethod
 import inspect
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Literal, Optional, Tuple, Type, Union
+import warnings
 
 import numpy as np
 from PIL import Image
@@ -130,7 +132,9 @@ class LLVEnhancer(ABC):
 
         Args:
             enhancer_name: Registered enhancer name, class name, or alias.
-            **kwargs: Keyword arguments passed to the enhancer constructor.
+            **kwargs: Keyword arguments intended for the enhancer constructor.
+                Parameters unsupported by the selected enhancer are ignored
+                with a warning.
 
         Returns:
             Instantiated enhancer.
@@ -154,7 +158,120 @@ class LLVEnhancer(ABC):
                 f"Did you mean: {suggestion}"
             )
 
-        return enhancer_class(**kwargs)
+        constructor_kwargs, unused_kwargs = cls._filter_constructor_kwargs(
+            enhancer_class,
+            kwargs,
+        )
+        enhancer = enhancer_class(**constructor_kwargs)
+        cls._print_enhancer_params(enhancer)
+
+        if unused_kwargs:
+            unused_text = ", ".join(
+                f"{name}={value!r}"
+                for name, value in unused_kwargs.items()
+            )
+            warnings.warn(
+                f"Algorithm '{enhancer_class.__name__}' does not use the "
+                f"following parameter(s): {unused_text}. These parameters "
+                "were ignored.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        return enhancer
+
+    @classmethod
+    def _get_constructor_parameter_names(
+        cls,
+        enhancer_class: Type["LLVEnhancer"],
+    ) -> List[str]:
+        """Collect explicit constructor parameters from an enhancer hierarchy.
+
+        Concrete algorithms commonly accept ``**kwargs`` only to forward the
+        base options to ``LLVEnhancer``. Variadic parameters are therefore not
+        treated as permission to accept arbitrary user keywords.
+
+        Args:
+            enhancer_class: Concrete enhancer class selected by the factory.
+
+        Returns:
+            Sorted constructor parameter names accepted by the concrete class
+            and its ``LLVEnhancer`` ancestors.
+        """
+        parameter_names = set()
+
+        for current_class in enhancer_class.__mro__:
+            if not issubclass(current_class, LLVEnhancer):
+                continue
+
+            constructor = current_class.__dict__.get("__init__")
+            if constructor is not None:
+                try:
+                    signature = inspect.signature(constructor)
+                except (TypeError, ValueError):
+                    signature = None
+
+                if signature is not None:
+                    for name, parameter in signature.parameters.items():
+                        if name == "self":
+                            continue
+                        if parameter.kind in {
+                            inspect.Parameter.POSITIONAL_ONLY,
+                            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                            inspect.Parameter.KEYWORD_ONLY,
+                        }:
+                            parameter_names.add(name)
+
+            if current_class is LLVEnhancer:
+                break
+
+        return sorted(parameter_names)
+
+    @classmethod
+    def _filter_constructor_kwargs(
+        cls,
+        enhancer_class: Type["LLVEnhancer"],
+        kwargs: Dict[str, Any],
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Split constructor keywords into supported and unused mappings."""
+        supported_names = set(
+            cls._get_constructor_parameter_names(enhancer_class)
+        )
+        supported = {
+            name: value
+            for name, value in kwargs.items()
+            if name in supported_names
+        }
+        unused = {
+            name: value
+            for name, value in kwargs.items()
+            if name not in supported_names
+        }
+        return supported, unused
+
+    @classmethod
+    def _print_enhancer_params(cls, enhancer: "LLVEnhancer") -> None:
+        """Print the selected algorithm and its effective parameter values."""
+        params = dict(enhancer.get_params())
+        for name in cls._get_constructor_parameter_names(
+            enhancer.__class__
+        ):
+            if name not in params and hasattr(enhancer, name):
+                params[name] = getattr(enhancer, name)
+
+        print(f"Algorithm: {enhancer.__class__.__name__}", file=sys.stderr)
+        print("Parameters:", file=sys.stderr)
+        if not params:
+            print("  (none)", file=sys.stderr, flush=True)
+            return
+
+        param_items = list(params.items())
+        for index, (name, value) in enumerate(param_items):
+            print(
+                f"  {name}: {value!r}",
+                file=sys.stderr,
+                flush=index == len(param_items) - 1,
+            )
 
     @classmethod
     def _get_similar_enhancer_name(
