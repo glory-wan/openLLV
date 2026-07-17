@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openLLV"
+version = "0.1.0"
+description = "An open-source Python library for low-level vision with traditional algorithms, deep-learning models, training, prediction, and evaluation utilities."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "Glory Wan", email = "glory947446@gmail.com" },
+    { name = "Qiyang Zhou", email = "hina778bainian@gmail.com" },
+]
+dependencies = [
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "numpy>=1.21",
+    "Pillow>=9.0",
+    "opencv-python>=4.5",
+    "tqdm>=4.60",
+    "PyYAML>=6.0",
+    "thop>=0.1.1",
+    "requests>=2.25",
+    "pyiqa>=0.1.10",
+    "numba>=0.58.1",
+]
+keywords = [
+    "low-level vision",
+    "low-light image enhancement",
+    "image enhancement",
+    "image restoration",
+    "super-resolution",
+    "denoising",
+    "deblurring",
+    "dehazing",
+    "computer vision",
+    "deep learning",
+    "pytorch",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.scripts]
+openllv = "openLLV.cli:main"
+llv = "openLLV.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["openLLV*"]
+
+[tool.setuptools.package-data]
+"openLLV.deepLearning" = ["config/*.yaml"]

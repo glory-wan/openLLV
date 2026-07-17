@@ -1,2 +1,4 @@
 /.idea
 TEST_PLAN.md
+/openLLV.egg-info
+/openLLV/__pycache__
