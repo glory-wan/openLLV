@@ -1,0 +1,49 @@
+model:
+  name: LLNet
+  params:
+    input_channels: 3
+    patch_size: 17
+    patch_stride: 3
+    hidden_dims: [2000, 1600, 1200]
+    activation: sigmoid
+    output_activation: sigmoid
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 1
+  num_workers: 4
+  pin_memory: true
+  return_filename: true
+loss:
+  name: llnet
+  params:
+    reconstruction_weight: 1.0
+    sparsity_weight: 0.001
+    weight_decay: 1.0e-05
+    target_sparsity: 0.05
+  output_index: null
+  output_key: null
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 100
+    eta_min: 1.0e-06
+train:
+  epochs: 100
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 42
+  resume: null

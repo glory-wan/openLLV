@@ -1,0 +1,48 @@
+model:
+  name: PairLIE
+  params:
+    input_channels: 3
+    feature_channels: 64
+    enhancement_gamma: 0.2
+    clamp_output: true
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: null
+  batch_size: 1
+  num_workers: 0
+  pin_memory: true
+  return_filename: true
+loss:
+  name: pairlie
+  params:
+    consistency_weight: 1.0
+    reconstruction_weight: 1.0
+    preservation_weight: 500.0
+    division_eps: 1.0e-06
+  output_index: null
+  output_key: pred
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    eps: 1.0e-08
+    weight_decay: 0.0
+scheduler:
+  name: multisteplr
+  params:
+    milestones: [100, 200, 300]
+    gamma: 0.5
+train:
+  epochs: 400
+  device: null
+  output_dir: null
+  save_every: 20
+  validate_every: 20
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 123456789
+  resume: null

@@ -1,0 +1,58 @@
+model:
+  name: ZeroIG
+  params:
+    input_channels: 3
+    enhance_layers: 3
+    enhance_channels: 64
+    denoise1_channels: 48
+    denoise2_channels: 48
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 1
+  num_workers: 4
+  pin_memory: true
+  return_filename: true
+loss:
+  name: zeroig
+  params:
+    enhance_brightness_weight: 700.0
+    enhance_normalized_weight: 1000.0
+    smooth_weight: 5.0
+    tv_weight: 1600.0
+    ld_res_weight: 1000.0
+    ld_cons_weight: 1000.0
+    rd_res_weight: 1000.0
+    rd_cons_weight: 1000.0
+    color_weight: 10000.0
+    illumination_weight: 1000.0
+    interaction_weight: 10000.0
+    variance_weight: 1000.0
+    target_luminance: 0.5
+    max_enhancement_factor: 25.0
+  output_index: null
+  output_key: null
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 100
+    eta_min: 1.0e-06
+train:
+  epochs: 100
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 42
+  resume: null

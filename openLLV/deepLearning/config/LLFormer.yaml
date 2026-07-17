@@ -1,0 +1,57 @@
+model:
+  name: LLFormer
+  params:
+    input_channels: 3
+    output_channels: 3
+    dim: 16
+    num_blocks: [2, 4, 8, 16]
+    num_refinement_blocks: 2
+    heads: [1, 2, 4, 8]
+    ffn_expansion_factor: 2.66
+    bias: false
+    layernorm_type: WithBias
+    attention: true
+    skip: false
+    pad_input: true
+    clamp_output: true
+    tile_size: null
+    tile_overlap: 0
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 8
+  num_workers: 8
+  pin_memory: true
+  return_filename: true
+loss:
+  name: llformer
+  params:
+    beta: 1.0
+    reduction: mean
+  output_index: null
+  output_key: pred
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    eps: 1.0e-08
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 3997
+    eta_min: 1.0e-06
+train:
+  epochs: 4000
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 1234
+  resume: null

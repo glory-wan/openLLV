@@ -1,0 +1,52 @@
+model:
+  name: EnlightenGAN
+  params:
+    input_channels: 3
+    generator_channels: 32
+    discriminator_channels: 32
+    discriminator_layers: 3
+    use_attention: true
+    local_patch_ratio: 0.5
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 2
+  num_workers: 4
+  pin_memory: true
+  return_filename: true
+loss:
+  name: enlightengan
+  params:
+    adversarial_weight: 1.0
+    local_adversarial_weight: 0.5
+    discriminator_weight: 0.5
+    self_regularization_weight: 10.0
+    exposure_weight: 1.0
+    tv_weight: 0.1
+    target_mean: 0.6
+  output_index: null
+  output_key: null
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.5, 0.999]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 100
+    eta_min: 1.0e-06
+train:
+  epochs: 100
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 42
+  resume: null

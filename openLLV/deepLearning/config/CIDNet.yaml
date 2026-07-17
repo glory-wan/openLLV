@@ -1,0 +1,57 @@
+model:
+  name: CIDNet
+  params:
+    input_channels: 3
+    channels: [36, 36, 72, 144]
+    heads: [1, 2, 4, 8]
+    norm: false
+    density_k: 0.2
+    input_gamma: 1.0
+    saturation_scale: 1.0
+    intensity_scale: 1.0
+    clamp_output: true
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: eval
+  batch_size: 8
+  num_workers: 8
+  pin_memory: true
+  return_filename: true
+loss:
+  name: cidnet
+  params:
+    pixel_weight: 1.0
+    ssim_weight: 0.5
+    edge_weight: 50.0
+    perceptual_weight: 0.01
+    hvi_weight: 1.0
+    use_perceptual: true
+    pretrained_vgg: true
+    perceptual_range_norm: true
+    use_input_norm: true
+  output_index: null
+  output_key: pred
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 1000
+    eta_min: 1.0e-07
+train:
+  epochs: 1000
+  device: null
+  output_dir: null
+  save_every: 10
+  validate_every: 10
+  log_every: 10
+  grad_clip: 0.01
+  amp: false
+  seed: 42
+  resume: null

@@ -1,0 +1,56 @@
+model:
+  name: KinD
+  params:
+    input_channels: 3
+    decomposition_channels: 64
+    decomposition_layers: 5
+    restoration_channels: 32
+    adjustment_channels: 32
+    adjustment_layers: 3
+    illumination_ratio: 5.0
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 2
+  num_workers: 4
+  pin_memory: true
+  return_filename: true
+loss:
+  name: kind
+  params:
+    decomposition_weight: 1.0
+    mutual_reconstruction_weight: 0.001
+    reflectance_consistency_weight: 0.01
+    illumination_smoothness_weight: 0.1
+    restoration_weight: 1.0
+    restoration_ssim_weight: 0.1
+    adjustment_weight: 1.0
+    adjustment_gradient_weight: 0.1
+    final_weight: 1.0
+    final_ssim_weight: 0.1
+  output_index: null
+  output_key: null
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 100
+    eta_min: 1.0e-06
+train:
+  epochs: 100
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 42
+  resume: null

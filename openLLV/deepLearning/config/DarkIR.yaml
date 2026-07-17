@@ -1,0 +1,59 @@
+model:
+  name: DarkIR
+  params:
+    input_channels: 3
+    width: 32
+    middle_blk_num_enc: 2
+    middle_blk_num_dec: 2
+    enc_blk_nums: [1, 2, 3]
+    dec_blk_nums: [3, 1, 1]
+    dilations: [1, 4, 9]
+    extra_depth_wise: true
+    side_loss: true
+data:
+  dataset: CommonDataset
+  root_dir: path/to/your/dataset
+  train_split: train
+  val_split: val
+  batch_size: 4
+  num_workers: 4
+  pin_memory: true
+  return_filename: true
+loss:
+  name: darkir
+  params:
+    pixel_weight: 1.0
+    perceptual_weight: 0.01
+    edge_weight: 50.0
+    lol_weight: 1.0
+    use_perceptual: true
+    use_edge: true
+    use_lol_loss: true
+    pretrained_vgg: true
+    perceptual_criterion: l1
+    edge_criterion: l2
+    side_upsample_mode: nearest
+  output_index: null
+  output_key: null
+optimizer:
+  name: adam
+  lr: 0.0001
+  params:
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+scheduler:
+  name: cosineannealinglr
+  params:
+    T_max: 100
+    eta_min: 1.0e-07
+train:
+  epochs: 100
+  device: null
+  output_dir: null
+  save_every: 1
+  validate_every: 1
+  log_every: 10
+  grad_clip: null
+  amp: false
+  seed: 10
+  resume: null
