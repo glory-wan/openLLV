@@ -159,7 +159,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Deblurring</summary>
+<summary>Image Deblurring</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -167,7 +168,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Dehazing</summary>
+<summary>Image Dehazing</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -175,7 +177,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Denoising</summary>
+<summary>Image Denoising</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -183,7 +186,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Deraining</summary>
+<summary>Image Deraining</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -191,7 +195,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>IC</summary>
+<summary>Image Colorization (IC)</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -199,7 +204,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>IRR</summary>
+<summary>Image Reflection Removal (IRR)</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -207,7 +213,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>ISR</summary>
+<summary>Image Shadow Removal (ISR)</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -215,7 +222,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>JAR</summary>
+<summary>JPEG Artifact Removal (JAR)</summary>
+
 
 | Model | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -269,7 +277,8 @@ open-source licenses.
 </details>
 
 <details open>
-<summary>Dehazing</summary>
+<summary>Image Dehazing</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -286,7 +295,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Deblurring</summary>
+<summary>Image Deblurring</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -294,7 +304,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Denoising</summary>
+<summary>Image Denoising</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -302,7 +313,10 @@ open-source licenses.
 </details>
 
 <details>
-<summary>Deraining</summary>
+<summary>Image Deraining</summary>
+
+
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -310,7 +324,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>IC</summary>
+<summary>Image Colorization (IC)</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -318,7 +333,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>IRR</summary>
+<summary>Image Reflection Removal (IRR)</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -326,7 +342,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>ISR</summary>
+<summary>Image Shadow Removal (ISR)</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
@@ -334,7 +351,8 @@ open-source licenses.
 </details>
 
 <details>
-<summary>JAR</summary>
+<summary>JPEG Artifact Removal (JAR)</summary>
+
 
 | Algorithm | Year | Venue | Paper | Official GitHub | Upstream license |
 | --- | --- | --- | --- | --- | --- |
