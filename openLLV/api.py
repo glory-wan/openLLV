@@ -38,7 +38,7 @@ def _split_predict_kwargs(
 
 
 def predict(
-    target: Any,
+    method: Any,
     source: Any,
     output: Optional[Union[str, Path]] = None,
     **kwargs: Any,
@@ -46,7 +46,7 @@ def predict(
     """Process an image or directory with a model or traditional algorithm.
 
     Args:
-        target: Registered model/algorithm name, checkpoint path, ``LLVModel``
+        method: Registered model/algorithm name, checkpoint path, ``LLVModel``
             instance, or ``LLVEnhancer`` instance.
         source: Image source or directory accepted by the selected predictor.
         output: Optional output file or directory.
@@ -63,18 +63,18 @@ def predict(
     from .predictor import Predictor
 
     predictor_kwargs, call_kwargs = _split_predict_kwargs(kwargs)
-    predictor = Predictor(target, **predictor_kwargs)
+    predictor = Predictor(method, **predictor_kwargs)
     return predictor(source, output=output, **call_kwargs)
 
 
 def enhance(
-    target: Any,
+    method: Any,
     source: Any,
     output: Optional[Union[str, Path]] = None,
     **kwargs: Any,
 ) -> Any:
     """Alias for :func:`predict` retained for enhancement workflows."""
-    return predict(target, source, output=output, **kwargs)
+    return predict(method, source, output=output, **kwargs)
 
 
 def train(
