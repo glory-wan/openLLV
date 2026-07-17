@@ -576,13 +576,16 @@ before commercial use or redistribution.
 Glory Wan<br>
 glory947446@gmail.com
 
+Qiyang Zhou<br>
+hina778bainian@gmail.com
+
 ## Citation
 
 Citation metadata for openLLV will be added after the first public release.
 
 ```bibtex
 @misc{openllv,
-  title  = {openLLV: An Open and Extensible Toolkit for Low-Level Vision},
+  title  = {openLLV: An Open-source and Extensible Toolkit for Unified Low-Level Vision},
   author = {Wan, Glory and Zhou, Qiyang},
   year   = {2026},
   note   = {Version 0.1.0; citation details to be finalized}
