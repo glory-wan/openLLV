@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import base64
+from contextlib import redirect_stderr
 import io
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -81,6 +83,50 @@ class EnhancerRegistryTests(unittest.TestCase):
         self.assertIsInstance(enhancer, ExampleEnhancer)
         self.assertEqual(enhancer.offset, 3.0)
         self.assertFalse(enhancer.keep_dtype)
+
+    def test_factory_filters_unused_parameters_prints_and_warns(self):
+        output = io.StringIO()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with redirect_stderr(output):
+                enhancer = LLVEnhancer.create_enhancer(
+                    "example-alias",
+                    offset=3,
+                    keep_dtype=False,
+                    gamma=0.8,
+                    colour_space="hsv",
+                )
+
+        self.assertIsInstance(enhancer, ExampleEnhancer)
+        self.assertEqual(enhancer.offset, 3.0)
+        self.assertFalse(enhancer.keep_dtype)
+        self.assertFalse(hasattr(enhancer, "gamma"))
+
+        printed = output.getvalue()
+        self.assertIn("Algorithm: ExampleEnhancer", printed)
+        self.assertIn("offset: 3.0", printed)
+        self.assertIn("keep_dtype: False", printed)
+
+        self.assertEqual(len(caught), 1)
+        warning_message = str(caught[0].message)
+        self.assertIn("Algorithm 'ExampleEnhancer'", warning_message)
+        self.assertIn("gamma=0.8", warning_message)
+        self.assertIn("colour_space='hsv'", warning_message)
+        self.assertIn("were ignored", warning_message)
+
+    def test_constructor_parameter_extraction_includes_base_and_subclass(self):
+        parameter_names = LLVEnhancer._get_constructor_parameter_names(
+            ExampleEnhancer
+        )
+        self.assertEqual(
+            parameter_names,
+            [
+                "clip_output",
+                "keep_dtype",
+                "offset",
+                "output_type",
+            ],
+        )
 
     def test_manual_registration_and_type_validation(self):
         class ManualEnhancer(LLVEnhancer):

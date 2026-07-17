@@ -233,6 +233,7 @@ class ComponentListingAPITests(unittest.TestCase):
         self.assertIn("psnr", {name.lower() for name in llv.list_metrics()})
         self.assertIn("l1", llv.list_losses())
         self.assertIn("commondataset", llv.list_datasets())
+        self.assertIn("paireddataset", llv.list_datasets())
 
     def test_grouped_listing_deduplicates_classes_and_preserves_aliases(self):
         available = llv.list_available()
@@ -255,6 +256,13 @@ class ComponentListingAPITests(unittest.TestCase):
             if row["name"] == "APIIdentityModel"
         )
         self.assertEqual(api_model["aliases"], ["api-identity"])
+
+        common_dataset = next(
+            row
+            for row in available["datasets"]
+            if row["name"] == "CommonDataset"
+        )
+        self.assertEqual(common_dataset["aliases"], ["PairedDataset"])
 
 
 if __name__ == "__main__":

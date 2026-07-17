@@ -39,16 +39,21 @@ class BaseDatasetRegistryTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             BaseDataset(root_dir="unused")
 
-    def test_registry_contains_common_dataset_names_and_aliases(self):
+    def test_registry_contains_common_dataset_name_and_paired_alias(self):
         registered = BaseDataset.list_registered_datasets()
 
-        for name in ("commondataset", "common", "paired", "common_dataset"):
+        for name in ("commondataset", "paireddataset"):
             with self.subTest(name=name):
                 self.assertIn(name, registered)
                 self.assertIs(BaseDataset.get_dataset_class(name.upper()), CommonDataset)
 
+        self.assertEqual(CommonDataset.aliases, ["PairedDataset"])
+
     def test_registry_key_normalization(self):
-        self.assertEqual(BaseDataset._normalize_registry_key("  Common  "), "common")
+        self.assertEqual(
+            BaseDataset._normalize_registry_key("  PairedDataset  "),
+            "paireddataset",
+        )
 
     def test_subclass_is_registered_automatically_by_name_and_alias(self):
         class DemoDataset(BaseDataset):
@@ -71,7 +76,7 @@ class BaseDatasetRegistryTests(unittest.TestCase):
             make_pair_layout(temp_dir)
 
             dataset = BaseDataset.create_dataset(
-                "paired",
+                "PairedDataset",
                 root_dir=temp_dir,
                 split="train",
             )
@@ -91,15 +96,18 @@ class BaseDatasetRegistryTests(unittest.TestCase):
         message = str(context.exception)
         self.assertIn("Available datasets", message)
         self.assertIn("Did you mean", message)
-        self.assertIn("common", message)
+        self.assertIn("commondataset", message)
 
     def test_similar_name_helper_has_match_and_fallback(self):
         self.assertEqual(
-            BaseDataset._get_similar_dataset_name("commn", ["common", "paired"]),
-            "common",
+            BaseDataset._get_similar_dataset_name(
+                "paireddatset",
+                ["paireddataset"],
+            ),
+            "paireddataset",
         )
         self.assertEqual(
-            BaseDataset._get_similar_dataset_name("xyz", ["common"]),
+            BaseDataset._get_similar_dataset_name("xyz", ["paireddataset"]),
             "No similar datasets found",
         )
 

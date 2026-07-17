@@ -23,7 +23,6 @@ EXPECTED_FILES = {
     "04_evaluate.py",
     "05_train_tiny.py",
     "06_model_forward.py",
-    "tmp.py",
 }
 
 RUNNABLE_FILES = sorted(EXPECTED_FILES - {"_utils.py"})
@@ -55,6 +54,8 @@ class ExampleExecutionTests(unittest.TestCase):
     def test_all_runnable_examples_complete_with_synthetic_data(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output_root = Path(temp_dir) / "example-output"
+            input_root = Path(temp_dir) / "example-input"
+            input_root.mkdir()
             original_path = list(sys.path)
             sys.path.insert(0, str(EXAMPLES_DIR))
             sys.modules.pop("_utils", None)
@@ -62,7 +63,10 @@ class ExampleExecutionTests(unittest.TestCase):
             try:
                 with patch.dict(
                     os.environ,
-                    {"OPENLLV_EXAMPLES_OUTPUT": str(output_root)},
+                    {
+                        "OPENLLV_EXAMPLES_INPUTS": str(input_root),
+                        "OPENLLV_EXAMPLES_OUTPUT": str(output_root),
+                    },
                 ):
                     for filename in RUNNABLE_FILES:
                         with self.subTest(filename=filename):
@@ -77,7 +81,7 @@ class ExampleExecutionTests(unittest.TestCase):
                 sys.path[:] = original_path
                 sys.modules.pop("_utils", None)
 
-            self.assertTrue((output_root / "assets" / "example_input.png").is_file())
+            self.assertTrue((output_root / "result" / "example_input.png").is_file())
             self.assertTrue((output_root / "io" / "copied.png").is_file())
             self.assertTrue(
                 (output_root / "traditional" / "gamma_single.png").is_file()
@@ -94,9 +98,6 @@ class ExampleExecutionTests(unittest.TestCase):
                     / "checkpoints"
                     / "last.pt"
                 ).is_file()
-            )
-            self.assertTrue(
-                (output_root / "resized" / "example_quarter.png").is_file()
             )
 
 
