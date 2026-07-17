@@ -135,6 +135,8 @@ __all__ = [
 class PSNRMetric(BaseMetric):
     """Peak Signal-to-Noise Ratio metric."""
 
+    alias = 'PSNR'
+
     def __init__(self, data_range: float = 1.0, **kwargs):
         """Initialize the PSNR metric.
 
@@ -176,6 +178,8 @@ class PSNRMetric(BaseMetric):
 
 class SSIMMetric(BaseMetric):
     """Structural Similarity Index metric."""
+
+    alias = 'SSIM'
 
     def __init__(self, data_range: float = 1.0, window_size: int = 11,
                  sigma: float = 1.5, **kwargs):
@@ -254,6 +258,8 @@ class SSIMMetric(BaseMetric):
 class MSEMetric(BaseMetric):
     """Mean Squared Error metric."""
 
+    alias = 'MSE'
+
     def _compute_impl(self, enImg: torch.Tensor, Refer: torch.Tensor) -> float:
         """Compute MSE between enhanced and reference images.
 
@@ -282,6 +288,8 @@ class MSEMetric(BaseMetric):
 class MAEMetric(BaseMetric):
     """Mean Absolute Error metric."""
 
+    alias = 'MAE'
+
     def _compute_impl(self, enImg: torch.Tensor, Refer: torch.Tensor) -> float:
         """Compute MAE between enhanced and reference images.
 
@@ -309,6 +317,8 @@ class MAEMetric(BaseMetric):
 
 class LPIPSMetric(BaseMetric):
     """Learned Perceptual Image Patch Similarity metric."""
+
+    alias = 'LPIPS'
 
     def __init__(self, device: str = None, data_range: float = 1.0,
                  net: str = 'alex', **kwargs):
@@ -401,6 +411,8 @@ class LPIPSMetric(BaseMetric):
 class LOEMetric(BaseMetric):
     """Lightness Order Error metric."""
 
+    alias = 'LOE'
+
     def __init__(self, patch_size: int = 50, **kwargs):
         """Initialize the LOE metric.
 
@@ -491,6 +503,7 @@ class NIQEMetric(BaseMetric):
     supported by the configured torch environment.
     """
 
+    alias = 'NIQE'
     pyiqa_metric_name = 'niqe'
 
     def __init__(self, data_range: float = 1.0, **kwargs):
@@ -563,6 +576,7 @@ class NIQEMetric(BaseMetric):
 class MUSIQMetric(NIQEMetric):
     """Multi-scale Image Quality Transformer metric."""
 
+    alias = 'MUSIQ'
     pyiqa_metric_name = 'musiq'
 
     def __init__(self, scales: List[float] = None, **kwargs):
@@ -601,6 +615,7 @@ class MUSIQMetric(NIQEMetric):
 class PIMetric(BaseMetric):
     """Perceptual Index metric."""
 
+    alias = 'PI'
     pyiqa_metric_name = 'pi'
 
     def __init__(self, data_range: float = 1.0, **kwargs):

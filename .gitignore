@@ -2,3 +2,7 @@
 TEST_PLAN.md
 /openLLV.egg-info
 /openLLV/__pycache__
+*.pyc
+*.pyc
+/openLLV/evaluation/__pycache__
+*.pyc

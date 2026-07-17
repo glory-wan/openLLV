@@ -29,7 +29,7 @@ class CommonDataset(BaseDataset):
                     val2.jpg
     """
 
-    aliases = ["common", "paired", "common_dataset"]
+    aliases = ["PairedDataset"]
 
     valid_names = ("test", "Test", "val", "Val", "validation")
 

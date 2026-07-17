@@ -14,7 +14,7 @@ class BaseMetric(ABC):
     dimensions, moves data to the configured device, and aligns spatial sizes
     before metric computation.
     """
-
+    aliases: str
     _metric_registry = {}
 
     def __init_subclass__(cls, **kwargs):
