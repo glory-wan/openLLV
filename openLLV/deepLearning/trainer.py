@@ -450,6 +450,7 @@ class Trainer:
         print(f"{'Scheduler':<20}: {scheduler_name:<20}")
         print(f"{'Dataset name':<20}: {str(data_cfg.get('dataset')):<20}")
         print(f"{'Batch size':<20}: {str(data_cfg.get('batch_size')):<20}")
+        print(f"{'image resize':<20}: {str(data_cfg.get('resize')):<20}")
         print(f"{'Root directory':<20}: {str(data_cfg.get('root_dir')):<20}")
         print(f"{'Output directory':<20}: {str(self.output_dir):<20}")
         print("=" * 70)
