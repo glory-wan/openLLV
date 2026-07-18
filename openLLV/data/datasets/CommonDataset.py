@@ -48,50 +48,56 @@ class CommonDataset(BaseDataset):
 
     def _resolve_pair_dirs(
             self,
-            low_dir: Optional[Path],
-            high_dir: Optional[Path],
+            input_dir: Optional[Path],
+            target_dir: Optional[Path],
     ) -> Tuple[Path, Optional[Path]]:
-        """Resolve low-light and normal-light image directories.
+        """Resolve input and target image directories.
 
         Args:
-            low_dir: Optional explicit low-light image directory. When provided,
-                it is returned directly with ``high_dir``.
-            high_dir: Optional explicit normal-light image directory.
+            input_dir: Optional explicit input image directory. When provided,
+                it is returned directly with ``target_dir``.
+            target_dir: Optional explicit target image directory.
 
         Returns:
-            A tuple containing the resolved low-light directory and optional
-            normal-light directory. The normal-light directory is None for_teach
-            unpaired datasets.
+            The resolved input directory and optional target directory. The
+            target directory is ``None`` for unpaired datasets.
         """
-        if low_dir is not None:
-            return low_dir, high_dir
+        if input_dir is not None:
+            return input_dir, target_dir
 
         split_dirs = self.split_aliases.get(self.split.lower(), (self.split,))
         candidates = []
 
         for split_dir in split_dirs:
             split_path = self.root_dir / split_dir
-            for low_name in self.input_dir_names:
-                for high_name in self.target_dir_names:
-                    candidates.append((split_path / low_name, split_path / high_name))
+            for input_name in self.input_dir_names:
+                for target_name in self.target_dir_names:
+                    candidates.append(
+                        (split_path / input_name, split_path / target_name)
+                    )
 
-        # Some local datasets are already organized as root/low and root/high.
-        for low_name in self.input_dir_names:
-            for high_name in self.target_dir_names:
-                candidates.append((self.root_dir / low_name, self.root_dir / high_name))
+        # Some datasets are already organized as root/input and root/target.
+        for input_name in self.input_dir_names:
+            for target_name in self.target_dir_names:
+                candidates.append(
+                    (self.root_dir / input_name, self.root_dir / target_name)
+                )
 
-        for candidate_low, candidate_high in candidates:
-            if candidate_low.exists() and candidate_high.exists():
-                return candidate_low, candidate_high
+        for candidate_input, candidate_target in candidates:
+            if candidate_input.exists() and candidate_target.exists():
+                return candidate_input, candidate_target
 
-        # Allow unpaired datasets organized as root/split/low or root/low.
-        for candidate_low, _ in candidates:
-            if candidate_low.exists():
-                return candidate_low, None
+        # Allow unpaired datasets organized as root/split/input or root/input.
+        for candidate_input, _ in candidates:
+            if candidate_input.exists():
+                return candidate_input, None
 
         # Return the most likely layout so BaseDataset raises a clear path error.
         first_split = split_dirs[0]
-        return self.root_dir / first_split / "low", self.root_dir / first_split / "high"
+        return (
+            self.root_dir / first_split / "input",
+            self.root_dir / first_split / "target",
+        )
 
     def get_stats(self) -> Dict[str, Union[str, int]]:
         """Get CommonDataset statistics.
@@ -103,4 +109,3 @@ class CommonDataset(BaseDataset):
         stats = super().get_stats()
         stats["split_aliases"] = ", ".join(self.split_aliases.get(self.split.lower(), (self.split,)))
         return stats
-

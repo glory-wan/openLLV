@@ -2,22 +2,43 @@
 
 import os
 from tqdm import tqdm
-import torch
-from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 import warnings
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, List, Tuple, Callable
 
+import torch
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+import torchvision
+
 from openLLV.data.utils import get_img_from_folder
 from openLLV.data.image_io import ImageReader, read_image
-from openLLV.data.basetransform import predict_Trans
 
 __all__ = [
     'single_data_loader',
     "PredictDataSet",
-    "EvaluateDataset"
+    "EvaluateDataset",
+    "predict_Trans",
 ]
+
+def pre_trans():
+    if hasattr(torchvision, "disable_beta_transforms_warning"):
+        torchvision.disable_beta_transforms_warning()
+
+    from torchvision.transforms import v2
+
+    ToImage = getattr(v2, 'ToImage', getattr(v2, 'ToImageTensor', v2.PILToTensor))
+    try:
+        ToFloat = v2.ToDtype(torch.float32, scale=True)
+    except TypeError:
+        ToFloat = v2.ConvertDtype(torch.float32) if hasattr(v2, 'ConvertDtype') else v2.ToDtype(torch.float32)
+
+    return v2.Compose([
+        ToImage(),
+        ToFloat,
+    ])
+
+predict_Trans = pre_trans()
 
 
 def single_data_loader(image_path, transform=predict_Trans):
