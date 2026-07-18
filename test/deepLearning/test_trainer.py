@@ -47,7 +47,7 @@ class TrainerTinyPairedDataset(BaseDataset):
         self.length = int(length)
         self.image_size = int(image_size)
 
-    def _resolve_pair_dirs(self, low_dir, high_dir):
+    def _resolve_pair_dirs(self, input_dir, target_dir):
         return Path("."), Path(".")
 
     def __len__(self) -> int:
@@ -55,15 +55,15 @@ class TrainerTinyPairedDataset(BaseDataset):
 
     def __getitem__(self, index: int):
         value = 0.05 + 0.1 * (index + 1)
-        low = torch.full(
+        input_tensor = torch.full(
             (3, self.image_size, self.image_size),
             value,
             dtype=torch.float32,
         )
-        target = torch.clamp(low * 0.5 + 0.35, 0.0, 1.0)
+        target = torch.clamp(input_tensor * 0.5 + 0.35, 0.0, 1.0)
         if self.return_filename:
-            return low, target, f"{self.split}-{index}.png"
-        return low, target
+            return input_tensor, target, f"{self.split}-{index}.png"
+        return input_tensor, target
 
 
 class TrainerTinyUnpairedDataset(TrainerTinyPairedDataset):
@@ -73,8 +73,8 @@ class TrainerTinyUnpairedDataset(TrainerTinyPairedDataset):
     aliases = ["trainer-unpaired"]
 
     def __getitem__(self, index: int):
-        low, _, filename = super().__getitem__(index)
-        return low, None, filename
+        input_tensor, _, filename = super().__getitem__(index)
+        return input_tensor, None, filename
 
 
 class TrainerToyModel(LLVModel):
@@ -170,6 +170,7 @@ class TrainerConfigTests(unittest.TestCase):
         second = get_default_train_config()
         self.assertEqual(first, DEFAULT_TRAIN_CONFIG)
         self.assertEqual(first["data"]["dataset"], "CommonDataset")
+        self.assertIsNone(first["data"]["resize"])
         self.assertEqual(first["optimizer"]["lr"], 1e-4)
         self.assertEqual(first["train"]["epochs"], 100)
 
@@ -209,6 +210,9 @@ class TrainerConfigTests(unittest.TestCase):
             {
                 "model": "trainer-toy",
                 "batch_size": 2,
+                "resize": (16, 24),
+                "train_input_dir": "train/input",
+                "train_target_dir": "train/target",
                 "loss_name": "l1",
                 "lr": 0.01,
                 "epochs": 4,
@@ -217,6 +221,9 @@ class TrainerConfigTests(unittest.TestCase):
         )
         self.assertEqual(flat["model"]["name"], "trainer-toy")
         self.assertEqual(flat["data"]["batch_size"], 2)
+        self.assertEqual(flat["data"]["resize"], (16, 24))
+        self.assertEqual(flat["data"]["train_input_dir"], "train/input")
+        self.assertEqual(flat["data"]["train_target_dir"], "train/target")
         self.assertEqual(flat["loss"]["name"], "l1")
         self.assertEqual(flat["train"]["epochs"], 4)
 

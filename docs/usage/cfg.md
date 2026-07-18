@@ -50,6 +50,7 @@ data:
   num_workers: 4
   pin_memory: true
   return_filename: true
+  resize: null
 
 loss:
   name: zerodce
@@ -91,7 +92,7 @@ train:
 
 ### `data`
 
-`dataset` selects a registered dataset. `root_dir` is required by the packaged `CommonDataset` configs. Shared constructor values belong in `params`; split-specific values belong in `train_params` and `val_params`. Explicit `train_low_dir`, `train_high_dir`, `val_low_dir`, and `val_high_dir` are also supported.
+`dataset` selects a registered dataset. `root_dir` is required by the packaged `CommonDataset` configs. Shared constructor values belong in `params`; split-specific values belong in `train_params` and `val_params`. Explicit `train_input_dir`, `train_target_dir`, `val_input_dir`, and `val_target_dir` are also supported. Set `resize` to an integer for a square output or to `[height, width]` for an explicit size.
 
 ### `loss`
 

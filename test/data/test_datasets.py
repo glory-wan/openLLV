@@ -21,10 +21,21 @@ def write_image(path, value=128, image_format=None):
     return path
 
 
-def make_pair_layout(root, split="train", low_name="sample.png", high_name="sample.png"):
-    low = write_image(Path(root) / split / "input" / low_name, value=32)
-    high = write_image(Path(root) / split / "target" / high_name, value=192)
-    return low.parent, high.parent
+def make_pair_layout(
+    root,
+    split="train",
+    input_name="sample.png",
+    target_name="sample.png",
+):
+    input_path = write_image(
+        Path(root) / split / "input" / input_name,
+        value=32,
+    )
+    target_path = write_image(
+        Path(root) / split / "target" / target_name,
+        value=192,
+    )
+    return input_path.parent, target_path.parent
 
 
 class BaseDatasetRegistryTests(unittest.TestCase):
@@ -60,8 +71,8 @@ class BaseDatasetRegistryTests(unittest.TestCase):
             name = "Demo"
             aliases = ["demo_alias"]
 
-            def _resolve_pair_dirs(self, low_dir, high_dir):
-                return low_dir or self.root_dir / "low", high_dir
+            def _resolve_pair_dirs(self, input_dir, target_dir):
+                return input_dir or self.root_dir / "input", target_dir
 
         self.assertIs(BaseDataset.get_dataset_class("DemoDataset"), DemoDataset)
         self.assertIs(BaseDataset.get_dataset_class("demo"), DemoDataset)
@@ -115,134 +126,159 @@ class BaseDatasetRegistryTests(unittest.TestCase):
 class CommonDatasetResolutionTests(unittest.TestCase):
     def test_resolves_standard_train_layout(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            low_dir, high_dir = make_pair_layout(temp_dir, split="train")
+            input_dir, target_dir = make_pair_layout(temp_dir, split="train")
 
             dataset = CommonDataset(temp_dir, split="train")
 
-        self.assertEqual(dataset.low_dir, low_dir)
-        self.assertEqual(dataset.high_dir, high_dir)
+        self.assertEqual(dataset.input_dir, input_dir)
+        self.assertEqual(dataset.target_dir, target_dir)
 
     def test_resolves_validation_alias_and_case_variant(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            low_dir, high_dir = make_pair_layout(temp_dir, split="Val")
+            input_dir, target_dir = make_pair_layout(temp_dir, split="Val")
 
             dataset = CommonDataset(temp_dir, split="validation")
 
-        self.assertEqual(dataset.low_dir, low_dir)
-        self.assertEqual(dataset.high_dir, high_dir)
+        self.assertEqual(dataset.input_dir, input_dir)
+        self.assertEqual(dataset.target_dir, target_dir)
 
     def test_resolves_root_level_input_target_layout(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            low_dir = write_image(Path(temp_dir) / "input" / "a.png").parent
-            high_dir = write_image(Path(temp_dir) / "target" / "a.png").parent
+            input_dir = write_image(Path(temp_dir) / "input" / "a.png").parent
+            target_dir = write_image(Path(temp_dir) / "target" / "a.png").parent
 
             dataset = CommonDataset(temp_dir)
 
-        self.assertEqual(dataset.low_dir, low_dir)
-        self.assertEqual(dataset.high_dir, high_dir)
+        self.assertEqual(dataset.input_dir, input_dir)
+        self.assertEqual(dataset.target_dir, target_dir)
 
     def test_explicit_directories_take_precedence(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = write_image(root / "custom-low" / "a.png").parent
-            high_dir = write_image(root / "custom-high" / "a.png").parent
+            input_dir = write_image(root / "custom-input" / "a.png").parent
+            target_dir = write_image(root / "custom-target" / "a.png").parent
 
             dataset = CommonDataset(
                 root,
-                low_dir=low_dir,
-                high_dir=high_dir,
+                input_dir=input_dir,
+                target_dir=target_dir,
             )
 
-        self.assertEqual(dataset.low_dir, low_dir)
-        self.assertEqual(dataset.high_dir, high_dir)
+        self.assertEqual(dataset.input_dir, input_dir)
+        self.assertEqual(dataset.target_dir, target_dir)
 
     def test_resolves_unpaired_input_layout(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            low_dir = write_image(Path(temp_dir) / "train" / "input" / "a.png").parent
+            input_dir = write_image(
+                Path(temp_dir) / "train" / "input" / "a.png"
+            ).parent
 
             dataset = CommonDataset(temp_dir)
 
-        self.assertEqual(dataset.low_dir, low_dir)
-        self.assertIsNone(dataset.high_dir)
+        self.assertEqual(dataset.input_dir, input_dir)
+        self.assertIsNone(dataset.target_dir)
         self.assertEqual(len(dataset), 1)
 
-    def test_missing_root_low_and_high_directories_are_rejected(self):
+    def test_missing_root_input_and_target_directories_are_rejected(self):
         with self.assertRaisesRegex(FileNotFoundError, "root directory"):
             CommonDataset("definitely-missing-root")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            with self.assertRaisesRegex(FileNotFoundError, "Low-light"):
+            with self.assertRaisesRegex(FileNotFoundError, "Input image"):
                 CommonDataset(root)
 
-            low_dir = root / "low"
-            low_dir.mkdir()
-            with self.assertRaisesRegex(FileNotFoundError, "Normal-light"):
-                CommonDataset(root, low_dir=low_dir, high_dir=root / "missing-high")
+            input_dir = root / "input"
+            input_dir.mkdir()
+            with self.assertRaisesRegex(FileNotFoundError, "Target image"):
+                CommonDataset(
+                    root,
+                    input_dir=input_dir,
+                    target_dir=root / "missing-target",
+                )
 
 
 class BaseDatasetPairingTests(unittest.TestCase):
     def test_pairs_by_case_insensitive_stem_and_ignores_unsupported_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = root / "low"
-            high_dir = root / "high"
-            write_image(low_dir / "B.PNG")
-            write_image(low_dir / "a.jpg")
-            write_image(high_dir / "a.png")
-            write_image(high_dir / "b.jpg")
-            (low_dir / "ignored.txt").write_text("ignored", encoding="utf-8")
+            input_dir = root / "input"
+            target_dir = root / "target"
+            write_image(input_dir / "B.PNG")
+            write_image(input_dir / "a.jpg")
+            write_image(target_dir / "a.png")
+            write_image(target_dir / "b.jpg")
+            (input_dir / "ignored.txt").write_text(
+                "ignored",
+                encoding="utf-8",
+            )
 
-            dataset = CommonDataset(root, low_dir=low_dir, high_dir=high_dir)
+            dataset = CommonDataset(
+                root,
+                input_dir=input_dir,
+                target_dir=target_dir,
+            )
 
         self.assertEqual(len(dataset), 2)
         self.assertEqual([pair[0].name for pair in dataset.pairs], ["a.jpg", "B.PNG"])
         self.assertEqual([pair[1].stem.lower() for pair in dataset.pairs], ["a", "b"])
 
-    def test_unmatched_low_image_warns_and_is_skipped(self):
+    def test_unmatched_input_image_warns_and_is_skipped(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = root / "low"
-            high_dir = root / "high"
-            write_image(low_dir / "matched.png")
-            write_image(low_dir / "unmatched.png")
-            write_image(high_dir / "matched.png")
+            input_dir = root / "input"
+            target_dir = root / "target"
+            write_image(input_dir / "matched.png")
+            write_image(input_dir / "unmatched.png")
+            write_image(target_dir / "matched.png")
 
-            with self.assertWarnsRegex(UserWarning, "No matching normal-light"):
-                dataset = CommonDataset(root, low_dir=low_dir, high_dir=high_dir)
+            with self.assertWarnsRegex(UserWarning, "No matching target"):
+                dataset = CommonDataset(
+                    root,
+                    input_dir=input_dir,
+                    target_dir=target_dir,
+                )
 
         self.assertEqual(len(dataset), 1)
 
-    def test_duplicate_high_stem_warns_and_keeps_first_sorted_match(self):
+    def test_duplicate_target_stem_warns_and_keeps_first_sorted_match(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = root / "low"
-            high_dir = root / "high"
-            write_image(low_dir / "sample.png")
-            first = write_image(high_dir / "sample.jpg", value=10)
-            write_image(high_dir / "sample.png", value=200)
+            input_dir = root / "input"
+            target_dir = root / "target"
+            write_image(input_dir / "sample.png")
+            first = write_image(target_dir / "sample.jpg", value=10)
+            write_image(target_dir / "sample.png", value=200)
 
             with self.assertWarnsRegex(UserWarning, "Duplicate image stem"):
-                dataset = CommonDataset(root, low_dir=low_dir, high_dir=high_dir)
+                dataset = CommonDataset(
+                    root,
+                    input_dir=input_dir,
+                    target_dir=target_dir,
+                )
 
         self.assertEqual(dataset.pairs[0][1], first)
 
     def test_empty_pair_set_strict_mode_raises_and_non_strict_warns(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = root / "low"
-            high_dir = root / "high"
-            low_dir.mkdir()
-            high_dir.mkdir()
+            input_dir = root / "input"
+            target_dir = root / "target"
+            input_dir.mkdir()
+            target_dir.mkdir()
 
             with self.assertRaisesRegex(RuntimeError, "No image pairs"):
-                CommonDataset(root, low_dir=low_dir, high_dir=high_dir)
+                CommonDataset(
+                    root,
+                    input_dir=input_dir,
+                    target_dir=target_dir,
+                )
 
             with self.assertWarnsRegex(UserWarning, "No image pairs"):
                 dataset = CommonDataset(
                     root,
-                    low_dir=low_dir,
-                    high_dir=high_dir,
+                    input_dir=input_dir,
+                    target_dir=target_dir,
                     strict_pairing=False,
                 )
 
@@ -251,15 +287,15 @@ class BaseDatasetPairingTests(unittest.TestCase):
     def test_custom_image_extensions_are_normalized(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            low_dir = root / "low"
-            high_dir = root / "high"
-            write_image(low_dir / "sample.foo", image_format="PNG")
-            write_image(high_dir / "sample.foo", image_format="PNG")
+            input_dir = root / "input"
+            target_dir = root / "target"
+            write_image(input_dir / "sample.foo", image_format="PNG")
+            write_image(target_dir / "sample.foo", image_format="PNG")
 
             dataset = CommonDataset(
                 root,
-                low_dir=low_dir,
-                high_dir=high_dir,
+                input_dir=input_dir,
+                target_dir=target_dir,
                 image_extensions=["FOO"],
             )
 
@@ -286,14 +322,14 @@ class BaseDatasetItemAndTransformTests(unittest.TestCase):
             make_pair_layout(temp_dir)
             dataset = CommonDataset(temp_dir)
 
-            low, high, name = dataset[0]
+            input_tensor, target_tensor, name = dataset[0]
 
-        self.assertIsInstance(low, torch.Tensor)
-        self.assertIsInstance(high, torch.Tensor)
-        self.assertEqual(low.shape, (3, 6, 8))
-        self.assertEqual(high.shape, (3, 6, 8))
+        self.assertIsInstance(input_tensor, torch.Tensor)
+        self.assertIsInstance(target_tensor, torch.Tensor)
+        self.assertEqual(input_tensor.shape, (3, 6, 8))
+        self.assertEqual(target_tensor.shape, (3, 6, 8))
         self.assertEqual(name, "sample.png")
-        self.assertLess(low.mean().item(), high.mean().item())
+        self.assertLess(input_tensor.mean().item(), target_tensor.mean().item())
 
     def test_return_filename_false_and_separate_transforms(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -301,28 +337,94 @@ class BaseDatasetItemAndTransformTests(unittest.TestCase):
             dataset = CommonDataset(
                 temp_dir,
                 return_filename=False,
-                transform_low=lambda image: "low-transformed",
-                transform_high=lambda image: "high-transformed",
+                transform_input=lambda image: "input-transformed",
+                transform_target=lambda image: "target-transformed",
             )
 
             sample = dataset[0]
 
-        self.assertEqual(sample, ("low-transformed", "high-transformed"))
+        self.assertEqual(sample, ("input-transformed", "target-transformed"))
 
-    def test_unpaired_getitem_returns_none_high_image(self):
+    def test_unpaired_getitem_returns_none_target_image(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             write_image(Path(temp_dir) / "train" / "input" / "sample.png")
             dataset = CommonDataset(temp_dir)
 
-            low, high, name = dataset[0]
+            input_tensor, target_tensor, name = dataset[0]
 
-        self.assertIsInstance(low, torch.Tensor)
-        self.assertIsNone(high)
+        self.assertIsInstance(input_tensor, torch.Tensor)
+        self.assertIsNone(target_tensor)
         self.assertEqual(name, "sample.png")
+
+    def test_integer_resize_makes_input_and_target_square_tensors(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            make_pair_layout(temp_dir)
+            dataset = CommonDataset(temp_dir, resize=512)
+
+            input_tensor, target_tensor, _ = dataset[0]
+
+        self.assertEqual(dataset.resize_size, (512, 512))
+        self.assertEqual(input_tensor.shape, (3, 512, 512))
+        self.assertEqual(target_tensor.shape, (3, 512, 512))
+
+    def test_pair_resize_uses_height_width_order(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            make_pair_layout(temp_dir)
+            dataset = CommonDataset(temp_dir, resize=(5, 11))
+
+            input_tensor, target_tensor, _ = dataset[0]
+
+        self.assertEqual(dataset.resize_size, (5, 11))
+        self.assertEqual(input_tensor.shape, (3, 5, 11))
+        self.assertEqual(target_tensor.shape, (3, 5, 11))
+
+    def test_yaml_style_resize_list_is_supported(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            make_pair_layout(temp_dir)
+            dataset = CommonDataset(temp_dir, resize=[7, 9])
+
+            input_tensor, target_tensor, _ = dataset[0]
+
+        self.assertEqual(input_tensor.shape, (3, 7, 9))
+        self.assertEqual(target_tensor.shape, (3, 7, 9))
+
+    def test_resize_is_combined_with_custom_image_transforms(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            make_pair_layout(temp_dir)
+            dataset = CommonDataset(
+                temp_dir,
+                resize=(7, 9),
+                transform_input=lambda image: image.size,
+                transform_target=lambda image: image.size,
+            )
+
+            input_size, target_size, _ = dataset[0]
+
+        self.assertEqual(input_size, (9, 7))
+        self.assertEqual(target_size, (9, 7))
+
+    def test_invalid_resize_values_are_rejected(self):
+        invalid_values = (
+            True,
+            0,
+            -1,
+            (1,),
+            (1, 2, 3),
+            (1.5, 2),
+            (1, 0),
+            "512",
+        )
+        for resize in invalid_values:
+            with self.subTest(resize=resize):
+                with self.assertRaises((TypeError, ValueError)):
+                    BaseDataset.normalize_resize_size(resize)
 
     def test_common_transform_accepts_two_arguments(self):
         dataset = CommonDataset.__new__(CommonDataset)
-        dataset.common_transform = lambda low, high: (low + 1, high + 2)
+        dataset.common_transform = lambda input_value, target_value: (
+            input_value + 1,
+            target_value + 2,
+        )
 
         result = dataset._apply_common_transform(1, 10)
 
@@ -338,7 +440,10 @@ class BaseDatasetItemAndTransformTests(unittest.TestCase):
 
         dataset.common_transform = tuple_transform
 
-        self.assertEqual(dataset._apply_common_transform("low", "high"), ("high", "low"))
+        self.assertEqual(
+            dataset._apply_common_transform("input", "target"),
+            ("target", "input"),
+        )
 
     def test_common_transform_falls_back_to_individual_images(self):
         dataset = CommonDataset.__new__(CommonDataset)
@@ -369,7 +474,7 @@ class BaseDatasetItemAndTransformTests(unittest.TestCase):
 
     def test_stats_include_base_and_common_fields(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            low_dir, high_dir = make_pair_layout(temp_dir, split="Val")
+            input_dir, target_dir = make_pair_layout(temp_dir, split="Val")
             dataset = CommonDataset(temp_dir, split="validation")
 
             stats = dataset.get_stats()
@@ -377,8 +482,9 @@ class BaseDatasetItemAndTransformTests(unittest.TestCase):
         self.assertEqual(stats["dataset"], "CommonDataset")
         self.assertEqual(stats["root_dir"], str(Path(temp_dir)))
         self.assertEqual(stats["split"], "validation")
-        self.assertEqual(stats["low_dir"].lower(), str(low_dir).lower())
-        self.assertEqual(stats["high_dir"].lower(), str(high_dir).lower())
+        self.assertEqual(stats["input_dir"].lower(), str(input_dir).lower())
+        self.assertEqual(stats["target_dir"].lower(), str(target_dir).lower())
+        self.assertIsNone(stats["resize"])
         self.assertEqual(stats["num_pairs"], 1)
         self.assertIn("val", stats["split_aliases"].lower())
 

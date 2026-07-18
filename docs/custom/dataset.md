@@ -19,11 +19,11 @@ class MyDataset(BaseDataset):
 
     def _resolve_pair_dirs(
         self,
-        low_dir: Optional[Path],
-        high_dir: Optional[Path],
+        input_dir: Optional[Path],
+        target_dir: Optional[Path],
     ) -> Tuple[Path, Optional[Path]]:
-        if low_dir is not None:
-            return low_dir, high_dir
+        if input_dir is not None:
+            return input_dir, target_dir
 
         split_root = self.root_dir / self.split
         return split_root / "input", split_root / "target"
@@ -39,7 +39,10 @@ With the default `return_filename=True`, each item is:
 input_tensor, target_tensor, filename = dataset[index]
 ```
 
-`target_tensor` may be `None` for an unpaired dataset. The default separate transforms convert PIL images to tensors.
+`target_tensor` may be `None` for an unpaired dataset. The default image
+transform optionally resizes each image and then converts it to a tensor. An
+integer resize produces a square image; a two-item value is interpreted as
+`(height, width)`.
 
 ## 3. Registration
 
@@ -64,6 +67,7 @@ result = llv.train(
     "ZeroDCE",
     dataset="my_dataset",
     root_dir="datasets/my_dataset",
+    resize=(256, 384),
 )
 ```
 
@@ -72,4 +76,3 @@ Dataset-specific constructor arguments can be placed under `data.params`, `data.
 ## 5. Existing CommonDataset
 
 Before adding a class, check whether `CommonDataset` is sufficient. It supports explicit input/target directories and common `train`, `test`, `val`, and `validation` split layouts.
-

@@ -35,7 +35,7 @@ dataset_root/
       image_001.png
 ```
 
-Filenames are paired by case-insensitive stem. The default validation split is `_test`, which resolves common `test`, `val`, and `validation` directory names. Explicit `train_low_dir`, `train_high_dir`, `val_low_dir`, and `val_high_dir` overrides are also supported.
+Filenames are paired by case-insensitive stem. The default validation split is `_test`, which resolves common `test`, `val`, and `validation` directory names. Explicit `train_input_dir`, `train_target_dir`, `val_input_dir`, and `val_target_dir` overrides are also supported.
 
 ## Train with a Built-in Config
 
@@ -47,6 +47,7 @@ result = llv.train(
     root_dir="datasets/my_dataset",
     epochs=10,
     batch_size=4,
+    resize=512,
     device="cuda",
 )
 ```
@@ -72,6 +73,7 @@ config = {
         "dataset": "CommonDataset",
         "root_dir": "datasets/my_dataset",
         "batch_size": 4,
+        "resize": [384, 512],
     },
     "loss": {"name": "zerodce", "params": {}},
     "optimizer": {"name": "adam", "lr": 1e-4},
@@ -98,7 +100,7 @@ The returned dictionary contains the history, best validation loss, and checkpoi
 | --- | --- |
 | `model`, `model_name` | `model.name` |
 | `model_params` | `model.params` |
-| `dataset`, `root_dir`, `batch_size`, `num_workers` | `data.*` |
+| `dataset`, `root_dir`, `batch_size`, `num_workers`, `resize` | `data.*` |
 | `loss`, `loss_params` | `loss.*` |
 | `optimizer`, `lr`, `optimizer_params` | `optimizer.*` |
 | `scheduler`, `scheduler_params` | `scheduler.*` |

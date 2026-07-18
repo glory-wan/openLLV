@@ -50,6 +50,7 @@ data:
   num_workers: 4
   pin_memory: true
   return_filename: true
+  resize: null
 
 loss:
   name: zerodce
@@ -91,7 +92,7 @@ train:
 
 ### `data`
 
-`dataset` 选择已注册的数据集。内置的 `CommonDataset` 配置要求提供 `root_dir`。共享的构造参数放在 `params` 中，特定数据划分的参数分别放在 `train_params` 和 `val_params` 中。同时支持显式指定 `train_low_dir`、`train_high_dir`、`val_low_dir` 和 `val_high_dir`。
+`dataset` 选择已注册的数据集。内置的 `CommonDataset` 配置要求提供 `root_dir`。共享的构造参数放在 `params` 中，特定数据划分的参数分别放在 `train_params` 和 `val_params` 中。同时支持显式指定 `train_input_dir`、`train_target_dir`、`val_input_dir` 和 `val_target_dir`。`resize` 为整数时输出正方形，为 `[height, width]` 时输出指定高宽。
 
 ### `loss`
 
@@ -154,4 +155,3 @@ result = llv.train(
 ```
 
 不要在 `model.params` 中添加 `device`。设备放置由训练器或预测器负责。
-

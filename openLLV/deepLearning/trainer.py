@@ -226,10 +226,11 @@ class Trainer:
             "train_split": ("data", "train_split"),
             "val_split": ("data", "val_split"),
             "return_filename": ("data", "return_filename"),
-            "train_low_dir": ("data", "train_low_dir"),
-            "train_high_dir": ("data", "train_high_dir"),
-            "val_low_dir": ("data", "val_low_dir"),
-            "val_high_dir": ("data", "val_high_dir"),
+            "resize": ("data", "resize"),
+            "train_input_dir": ("data", "train_input_dir"),
+            "train_target_dir": ("data", "train_target_dir"),
+            "val_input_dir": ("data", "val_input_dir"),
+            "val_target_dir": ("data", "val_target_dir"),
             "data_params": ("data", "params"),
             "train_params": ("data", "train_params"),
             "val_params": ("data", "val_params"),
@@ -584,16 +585,16 @@ class Trainer:
         self,
         split_key: str,
         split_value: str,
-        low_dir_key: str,
-        high_dir_key: str,
+        input_dir_key: str,
+        target_dir_key: str,
     ) -> BaseDataset:
         """Build one dataset split.
 
         Args:
             split_key: Split prefix used for split-specific params.
             split_value: Dataset split name.
-            low_dir_key: Config key for an explicit low-light directory.
-            high_dir_key: Config key for an explicit normal-light directory.
+            input_dir_key: Config key for an explicit input directory.
+            target_dir_key: Config key for an explicit target directory.
 
         Returns:
             Dataset instance.
@@ -627,15 +628,18 @@ class Trainer:
             }
         )
 
-        low_dir = data_cfg.get(low_dir_key)
-        high_dir = data_cfg.get(high_dir_key)
-        if low_dir is not None:
-            dataset_kwargs["low_dir"] = low_dir
-        if high_dir is not None:
-            dataset_kwargs["high_dir"] = high_dir
+        input_dir = data_cfg.get(input_dir_key)
+        target_dir = data_cfg.get(target_dir_key)
+        if input_dir is not None:
+            dataset_kwargs["input_dir"] = input_dir
+        if target_dir is not None:
+            dataset_kwargs["target_dir"] = target_dir
 
-        dataset_kwargs.setdefault("transform_low", None)
-        dataset_kwargs.setdefault("transform_high", None)
+        if "resize" not in dataset_kwargs and data_cfg.get("resize") is not None:
+            dataset_kwargs["resize"] = data_cfg["resize"]
+
+        dataset_kwargs.setdefault("transform_input", None)
+        dataset_kwargs.setdefault("transform_target", None)
         dataset_kwargs.setdefault("common_transform", None)
 
         return dataset_cls(**dataset_kwargs)
@@ -651,8 +655,8 @@ class Trainer:
         train_dataset = self._build_dataset(
             split_key="train",
             split_value=data_cfg.get("train_split", "train"),
-            low_dir_key="train_low_dir",
-            high_dir_key="train_high_dir",
+            input_dir_key="train_input_dir",
+            target_dir_key="train_target_dir",
         )
 
         loader_kwargs = {
@@ -665,14 +669,14 @@ class Trainer:
 
         val_loader = None
         use_val = not isinstance(data_cfg["dataset"], BaseDataset) and bool(
-            data_cfg.get("val_split") or data_cfg.get("val_low_dir")
+            data_cfg.get("val_split") or data_cfg.get("val_input_dir")
         )
         if use_val:
             val_dataset = self._build_dataset(
                 split_key="val",
                 split_value=data_cfg.get("val_split", "_test"),
-                low_dir_key="val_low_dir",
-                high_dir_key="val_high_dir",
+                input_dir_key="val_input_dir",
+                target_dir_key="val_target_dir",
             )
             val_loader = DataLoader(
                 val_dataset,
@@ -847,10 +851,10 @@ class Trainer:
 
         Args:
             batch: Batch returned by a dataset.
-            require_target: Whether a paired normal-light target is required.
+            require_target: Whether a paired target is required.
 
         Returns:
-            Tuple containing low-light tensor, optional target tensor, and
+            Tuple containing input tensor, optional target tensor, and
             optional filenames.
 
         Raises:
@@ -858,13 +862,13 @@ class Trainer:
                 is missing.
         """
         if isinstance(batch, Mapping):
-            low = self._first_mapping_value(
+            input_tensor = self._first_mapping_value(
                 batch,
-                ("input", "low", "low_light", "image", "source"),
+                ("input", "image", "source"),
             )
-            high = self._first_mapping_value(
+            target_tensor = self._first_mapping_value(
                 batch,
-                ("target", "high", "normal", "reference", "gt"),
+                ("target", "reference", "gt"),
                 required=False,
             )
             filenames = self._first_mapping_value(
@@ -873,40 +877,44 @@ class Trainer:
                 required=False,
             )
         elif torch.is_tensor(batch):
-            low, high, filenames = batch, None, None
+            input_tensor, target_tensor, filenames = batch, None, None
         elif isinstance(batch, (tuple, list)) and len(batch) == 3:
-            low, high, filenames = batch
+            input_tensor, target_tensor, filenames = batch
         elif isinstance(batch, (tuple, list)) and len(batch) == 2:
-            low, second = batch
+            input_tensor, second = batch
             if torch.is_tensor(second) or second is None:
-                high, filenames = second, None
+                target_tensor, filenames = second, None
             else:
-                high, filenames = None, second
+                target_tensor, filenames = None, second
         elif isinstance(batch, (tuple, list)) and len(batch) == 1:
-            low, high, filenames = batch[0], None, None
+            input_tensor, target_tensor, filenames = batch[0], None, None
         else:
             raise ValueError(
                 f"Unsupported batch format: {type(batch).__name__}."
             )
 
-        if require_target and high is None:
+        if require_target and target_tensor is None:
             raise ValueError(
                 "Supervised training requires paired target images."
             )
 
-        if not torch.is_tensor(low):
+        if not torch.is_tensor(input_tensor):
             raise TypeError(
-                f"Batch input must be a tensor, got {type(low)!r}."
+                f"Batch input must be a tensor, got {type(input_tensor)!r}."
             )
-        if high is not None and not torch.is_tensor(high):
+        if target_tensor is not None and not torch.is_tensor(target_tensor):
             raise TypeError(
-                f"Batch target must be a tensor or None, got {type(high)!r}."
+                "Batch target must be a tensor or None, got "
+                f"{type(target_tensor)!r}."
             )
-        low = low.to(self.device, non_blocking=True)
-        if high is not None:
-            high = high.to(self.device, non_blocking=True)
+        input_tensor = input_tensor.to(self.device, non_blocking=True)
+        if target_tensor is not None:
+            target_tensor = target_tensor.to(
+                self.device,
+                non_blocking=True,
+            )
 
-        return low, high, filenames
+        return input_tensor, target_tensor, filenames
 
     @staticmethod
     def _first_mapping_value(
@@ -1110,7 +1118,7 @@ class Trainer:
         Args:
             output: Raw model output.
             target: Optional paired target tensor.
-            input_tensor: Low-light input tensor required by ``BaseLoss``.
+            input_tensor: Input tensor required by ``BaseLoss``.
 
         Returns:
             Tuple containing scalar loss tensor and optional prediction tensor.
@@ -1154,7 +1162,7 @@ class Trainer:
             not isinstance(self.criterion, BaseLoss)
             or self.criterion.requires_target
         )
-        low, high, _ = self._move_batch_to_device(
+        input_tensor, target_tensor, _ = self._move_batch_to_device(
             batch,
             require_target=requires_target,
         )
@@ -1170,16 +1178,23 @@ class Trainer:
 
         try:
             if paired_forward:
-                output = self.model(low, paired_image=high)
+                output = self.model(
+                    input_tensor,
+                    paired_image=target_tensor,
+                )
             else:
-                output = self.model(low)
+                output = self.model(input_tensor)
         finally:
             if had_mode:
                 self.model.config["mode"] = original_mode
             elif needs_training_output and hasattr(self.model, "config"):
                 self.model.config.pop("mode", None)
 
-        loss, prediction = self._compute_loss(output, high, input_tensor=low)
+        loss, prediction = self._compute_loss(
+            output,
+            target_tensor,
+            input_tensor=input_tensor,
+        )
         if not torch.is_tensor(loss):
             raise TypeError(
                 f"Loss must be a torch.Tensor, got {type(loss)!r}."
@@ -1364,7 +1379,7 @@ class Trainer:
         if isinstance(batch, Mapping):
             tensor = self._first_mapping_value(
                 batch,
-                ("input", "low", "low_light", "image", "source"),
+                ("input", "image", "source"),
             )
         elif torch.is_tensor(batch):
             tensor = batch

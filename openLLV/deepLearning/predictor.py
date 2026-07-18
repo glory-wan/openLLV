@@ -17,7 +17,7 @@ if hasattr(torchvision, "disable_beta_transforms_warning"):
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from openLLV.data.basetransform import predict_Trans
+from openLLV.data.coreDataset import predict_Trans
 from openLLV.data.image_io import ImageReader
 from openLLV.deepLearning.models import LLVModel
 from openLLV.utils import log_info_env

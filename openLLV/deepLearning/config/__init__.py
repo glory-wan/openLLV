@@ -41,6 +41,7 @@ DEFAULT_TRAIN_CONFIG: Dict[str, Any] = {
         "train_split": "train",
         "val_split": "_test",
         "return_filename": True,
+        "resize": None,
         "params": {},
         "train_params": {},
         "val_params": {},

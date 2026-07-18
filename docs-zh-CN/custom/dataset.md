@@ -19,11 +19,11 @@ class MyDataset(BaseDataset):
 
     def _resolve_pair_dirs(
         self,
-        low_dir: Optional[Path],
-        high_dir: Optional[Path],
+        input_dir: Optional[Path],
+        target_dir: Optional[Path],
     ) -> Tuple[Path, Optional[Path]]:
-        if low_dir is not None:
-            return low_dir, high_dir
+        if input_dir is not None:
+            return input_dir, target_dir
 
         split_root = self.root_dir / self.split
         return split_root / "input", split_root / "target"
@@ -39,7 +39,7 @@ class MyDataset(BaseDataset):
 input_tensor, target_tensor, filename = dataset[index]
 ```
 
-对于非成对数据集，`target_tensor` 可以为 `None`。默认的独立变换会把 PIL 图像转换为张量。
+对于非成对数据集，`target_tensor` 可以为 `None`。默认图像变换会先按需调整尺寸，再把 PIL 图像转换为张量。整数尺寸会生成正方形图像，二元值按 `(height, width)` 解释。
 
 ## 3. 注册
 
@@ -64,6 +64,7 @@ result = llv.train(
     "ZeroDCE",
     dataset="my_dataset",
     root_dir="datasets/my_dataset",
+    resize=(256, 384),
 )
 ```
 
@@ -72,4 +73,3 @@ result = llv.train(
 ## 5. 现有 CommonDataset
 
 添加新类之前，请先确认 `CommonDataset` 是否已经满足需求。它支持显式的输入/目标目录，以及常见的 `train`、`test`、`val` 和 `validation` 数据划分结构。
-

@@ -1,4 +1,4 @@
-"""Tests for :mod:`openLLV.data.basetransform`."""
+"""Tests for the prediction transform exposed by :mod:`openLLV.data`."""
 
 import unittest
 
@@ -7,7 +7,7 @@ import torch
 from PIL import Image
 
 import openLLV.data as data_package
-from openLLV.data.basetransform import ToFloat, ToImage, predict_Trans
+from openLLV.data.coreDataset import predict_Trans
 
 
 class PredictTransformTests(unittest.TestCase):
@@ -42,10 +42,6 @@ class PredictTransformTests(unittest.TestCase):
 
         self.assertEqual(tensor.dtype, torch.float32)
         torch.testing.assert_close(tensor, torch.ones_like(tensor))
-
-    def test_compatibility_transform_components_are_callable(self):
-        self.assertTrue(callable(ToImage))
-        self.assertTrue(callable(ToFloat))
 
     def test_predict_transform_is_exported_from_data_package(self):
         self.assertIs(data_package.predict_Trans, predict_Trans)

@@ -1,7 +1,7 @@
 """Common paired dataset implementation."""
 
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 from openLLV.data.datasets.BaseDataset import BaseDataset
 
@@ -99,7 +99,7 @@ class CommonDataset(BaseDataset):
             self.root_dir / first_split / "target",
         )
 
-    def get_stats(self) -> Dict[str, Union[str, int]]:
+    def get_stats(self) -> Dict[str, Any]:
         """Get CommonDataset statistics.
 
         Returns:
@@ -107,5 +107,9 @@ class CommonDataset(BaseDataset):
             used when resolving image directories.
         """
         stats = super().get_stats()
-        stats["split_aliases"] = ", ".join(self.split_aliases.get(self.split.lower(), (self.split,)))
+        split_aliases = self.split_aliases.get(
+            self.split.lower(),
+            (self.split,),
+        )
+        stats["split_aliases"] = ", ".join(split_aliases)
         return stats

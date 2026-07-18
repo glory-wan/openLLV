@@ -35,7 +35,7 @@ dataset_root/
       image_001.png
 ```
 
-文件会按不区分大小写的主干名称配对。默认验证划分为 `_test`，它能够解析常见的 `test`、`val` 和 `validation` 目录名称。也支持显式指定 `train_low_dir`、`train_high_dir`、`val_low_dir` 和 `val_high_dir`。
+文件会按不区分大小写的主干名称配对。默认验证划分为 `_test`，它能够解析常见的 `test`、`val` 和 `validation` 目录名称。也支持显式指定 `train_input_dir`、`train_target_dir`、`val_input_dir` 和 `val_target_dir`。
 
 ## 使用内置配置训练
 
@@ -47,6 +47,7 @@ result = llv.train(
     root_dir="datasets/my_dataset",
     epochs=10,
     batch_size=4,
+    resize=512,
     device="cuda",
 )
 ```
@@ -72,6 +73,7 @@ config = {
         "dataset": "CommonDataset",
         "root_dir": "datasets/my_dataset",
         "batch_size": 4,
+        "resize": [384, 512],
     },
     "loss": {"name": "zerodce", "params": {}},
     "optimizer": {"name": "adam", "lr": 1e-4},
@@ -98,7 +100,7 @@ result = trainer.train()
 | --- | --- |
 | `model`、`model_name` | `model.name` |
 | `model_params` | `model.params` |
-| `dataset`、`root_dir`、`batch_size`、`num_workers` | `data.*` |
+| `dataset`、`root_dir`、`batch_size`、`num_workers`、`resize` | `data.*` |
 | `loss`、`loss_params` | `loss.*` |
 | `optimizer`、`lr`、`optimizer_params` | `optimizer.*` |
 | `scheduler`、`scheduler_params` | `scheduler.*` |
@@ -132,4 +134,3 @@ result = llv.train(
 ```
 
 只有在有意加载部分兼容的状态字典时，才应使用 `strict_resume=False`。
-
