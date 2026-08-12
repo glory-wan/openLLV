@@ -1,5 +1,6 @@
 import math
 import warnings
+import sys
 
 import torch
 from typing import Dict, Any, Optional, Union, List, Tuple
@@ -156,7 +157,7 @@ class Evaluator:
 
             better = "↑" if metric.higher_is_better else "↓"
             print(f"\nComputing metric [{idx}/{len(self.metric_order)}]: {metric_name} {better}, "
-                  f"{'requires reference images' if metric.requires_reference else 'no-reference metric'}")
+                  f"{'requires reference images' if metric.requires_reference else 'no-reference metric'}", flush=True)
 
             if metric.requires_reference and not dataset.ref_dict:
                 print(f"Skipping {metric_name} - reference images required but not provided")
@@ -175,7 +176,7 @@ class Evaluator:
             stats = self._compute_metric_statistics(values, better)
             results['statistics'][metric_name] = stats
 
-            print(f"\n {metric_name} {stats['better']} statistics:")
+            print(f"\n {metric_name} {stats['better']} statistics:", flush=True)
             print(f"{'':<5} {'Mean':<10} {'Std':<10} {'Min':<10} {'Max':<10} {'Valid Samples':<15}")
             print(
                 f"{'':<5} "
@@ -248,7 +249,7 @@ class Evaluator:
         values = {}
         total_images = len(dataset)
 
-        pbar = tqdm(total=total_images, desc=f"Computing {metric_name}", unit="batch",
+        pbar = tqdm(total=total_images, desc=f"Computing {metric_name}", unit="batch", file=sys.stdout,
                         bar_format='{l_bar}{bar:30}{r_bar}{bar:-30b}')
 
         for batch_idx, (en_batch, ref_batch, name_batch) in enumerate(dataloader):
