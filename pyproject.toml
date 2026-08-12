@@ -55,6 +55,9 @@ classifiers = [
 dev = [
     "pytest>=7.0",
 ]
+swanlab = [
+    "swanlab>=0.7.20",
+]
 
 [project.scripts]
 openllv = "openLLV.cli:main"
