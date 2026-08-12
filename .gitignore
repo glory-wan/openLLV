@@ -3,6 +3,10 @@ TEST_PLAN.md
 /openLLV.egg-info
 __pycache__/
 *.py[cod]
+*.pyc
 /tmp
+uv.lock
 
 /dev
+**/.DS_Store
+**/outputs
