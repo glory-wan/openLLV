@@ -19,6 +19,7 @@ class GCP(LLVEnhancer):
 
     name = "GCP"
     aliases = ["gcp", "gcp-ms"]
+    working_range = "unit"
 
     def __init__(
         self,

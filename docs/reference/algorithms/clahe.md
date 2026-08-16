@@ -23,7 +23,7 @@ CLAHE performs contrast-limited local histogram equalization with OpenCV.
 
 ## Implementation Notes
 
-Grayscale input is equalized directly. For BGR input, `rgb` processes every channel and other modes process their luminance/value channel. Non-`uint8` input is converted first. Per-call algorithm kwargs are ignored. Because the OpenCV object is cached at construction, changing `clip_limit` or `tile_grid_size` through `set_params` does not rebuild it; create a new enhancer instead.
+Public three-channel input and NumPy output use RGB. `LLVEnhancer` converts to internal BGR only around `_enhance()`. Grayscale input is equalized directly; internally, `rgb` processes every BGR channel and other modes process their luminance/value channel. Non-`uint8` input is converted first. Per-call algorithm kwargs are ignored. Because the OpenCV object is cached at construction, changing `clip_limit` or `tile_grid_size` through `set_params` does not rebuild it; create a new enhancer instead.
 
 ## Parameters
 
@@ -34,7 +34,8 @@ Grayscale input is equalized directly. For BGR input, `rgb` processes every chan
 | `tile_grid_size` | `Tuple[int, int]` | `(8, 8)` | Exactly two positive non-boolean integers; otherwise `ValueError`. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format; invalid value raises `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Preserve input dtype; non-boolean raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip to valid dtype range; non-boolean raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip to the resolved input value range; non-boolean raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range. Auto infers float `[0,1]` or `[0,255]`; use `"byte"` for ambiguous dark byte-range floats whose maximum is `<= 1`. Custom bounds must be finite and increasing. Values outside the selected range raise `ValueError`. |
 
 ## Usage Example
 

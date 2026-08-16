@@ -21,7 +21,7 @@ RCLAHE 递归应用相同 CLAHE 操作以增强局部对比度。
 
 ## Implementation Notes
 
-输入转为 `uint8` 后重复 CLAHE `iterations` 次，通道行为同 CLAHE。按次算法参数被忽略。`set_params` 不重建 OpenCV 对象，改变 `clip_limit` 或 `tile_grid_size` 后应重建实例；改变 `iterations` 会生效。
+公共三通道输入和 NumPy 输出使用 RGB；基类仅在 `_enhance()` 边界转换内部 BGR。输入转为 `uint8` 后重复 CLAHE `iterations` 次，通道行为同 CLAHE。按次算法参数被忽略。`set_params` 不重建 OpenCV 对象，改变 `clip_limit` 或 `tile_grid_size` 后应重建实例；改变 `iterations` 会生效。
 
 ## Parameters
 | 参数 | 类型 | 默认值 | 含义 / 约束 |
@@ -32,7 +32,8 @@ RCLAHE 递归应用相同 CLAHE 操作以增强局部对比度。
 | `iterations` | `int` | `3` | 正的非布尔整数，否则抛 `ValueError`。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式；非法值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 保留输入 dtype；非布尔值抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪至有效 dtype 范围；非布尔值抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪至解析后的输入值域；非布尔值抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域。自动推断浮点 `[0,1]` 或 `[0,255]`；最大值 `<= 1` 的暗部字节值域浮点图须显式用 `"byte"`。自定义边界必须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 ```python

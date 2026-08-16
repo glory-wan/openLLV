@@ -19,6 +19,7 @@ class LIME(LLVEnhancer):
 
     name = "LIME"
     aliases = []
+    working_range = "unit"
 
     def __init__(
         self,

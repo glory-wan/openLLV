@@ -1,6 +1,6 @@
 """Gamma correction enhancer."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 
@@ -14,6 +14,7 @@ class Gamma(LLVEnhancer):
 
     name = "Gamma"
     aliases = []
+    working_range = "unit"
 
     def __init__(
         self,

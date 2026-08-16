@@ -125,6 +125,7 @@ class PredictorInitializationTests(unittest.TestCase):
                     "output_type": "numpy",
                     "keep_dtype": True,
                     "clip_output": True,
+                    "value_range": "auto",
                     "offset": 4.0,
                 },
             },
@@ -138,7 +139,7 @@ class PredictorSingleImageTests(unittest.TestCase):
 
         self.assertIsNone(saved)
         self.assertEqual(enhanced.dtype, np.uint8)
-        np.testing.assert_array_equal(enhanced, rgb_sample()[:, :, ::-1])
+        np.testing.assert_array_equal(enhanced, rgb_sample())
 
     def test_runtime_kwargs_are_forwarded_to_enhancer(self):
         enhanced, _ = Predictor(method="predictor-test").predict_single(
@@ -147,7 +148,7 @@ class PredictorSingleImageTests(unittest.TestCase):
             offset=5,
         )
         expected = np.clip(
-            rgb_sample()[:, :, ::-1].astype(np.float32) + 5,
+            rgb_sample().astype(np.float32) + 5,
             0,
             255,
         ).astype(np.uint8)
@@ -395,8 +396,13 @@ class PredictorHelperTests(unittest.TestCase):
     def test_save_numpy_image_creates_parent_and_reports_opencv_failure(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             target = Path(temp_dir) / "nested" / "image.png"
-            Predictor._save_numpy_image(rgb_sample()[:, :, ::-1], target)
+            Predictor._save_numpy_image(rgb_sample(), target)
             self.assertTrue(target.is_file())
+            with Image.open(target) as saved:
+                np.testing.assert_array_equal(
+                    np.asarray(saved.convert("RGB")),
+                    rgb_sample(),
+                )
 
             failed = Path(temp_dir) / "failed" / "image.png"
             with patch(

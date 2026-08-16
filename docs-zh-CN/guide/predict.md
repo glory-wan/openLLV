@@ -25,7 +25,7 @@ openLLV.predict(target, source, output=None, **kwargs)
 enhanced_image, saved_path = openLLV.predict(...)
 ```
 
-深度学习后端返回 PIL 图像，传统算法后端返回 NumPy 数组。`saved_path` 为 `Path`；当 `save=False` 时为 `None`。
+深度学习后端返回 RGB PIL 图像，传统算法后端返回 RGB NumPy 数组。`saved_path` 为 `Path`；当 `save=False` 时为 `None`。
 
 对于目录输入，预测器会递归处理支持的图像，并按确定的顺序返回已保存的 `Path` 列表。相对目录结构和源文件扩展名都会保留。
 
@@ -43,6 +43,8 @@ enhanced, saved_path = llv.predict(
 ```
 
 算法构造参数可以随顶层调用传入。使用 `Predictor.predict_single()` 时，也可以提供方法专属的单图像覆盖参数。
+
+传统算法接受 `value_range="auto"`（默认）、`"unit"`、`"byte"` 或自定义 `(min, max)` 值域。自动模式会分别保持通常的浮点 `[0,1]` 与浮点 `[0,255]` 约定。若字节值域浮点图的最大值 `<= 1`，其数值内容与单位值域图无法区分，请显式传 `value_range="byte"`。
 
 ## 深度学习模型
 

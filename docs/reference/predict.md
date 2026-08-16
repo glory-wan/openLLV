@@ -23,6 +23,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `backend`        | `str`                                              | `"auto"`                | `"auto"`, a deep-learning backend alias, or a traditional backend alias. See [Backend resolution](#backend-resolution)                                                       |
 | `output_dir`     | `Optional[Union[str, Path]]`                       | `None`                  | Default output directory used when `output` is omitted                                                                                                                       |
 | `config`         | `Optional[Dict[str, Any]]`                         | `None`                  | Model or algorithm configuration; passed to the backend                                                                                                                      |
+| `value_range`    | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Traditional algorithms only: input value-range interpretation. Auto infers ordinary float `[0,1]` or `[0,255]`; explicit/custom ranges are validated                                      |
 | `device`         | `Optional[Any]`                                    | `None`                  | Device for the deep-learning backend; `None` → CUDA if available, else CPU                                                                                                   |
 | `transform`      | `Optional[Any]`                                    | `None`                  | Input transform for the deep-learning backend (callable or torchvision v2 transform list)                                                                                    |
 | `batch_size`     | `int`                                              | `1`                     | Deep-learning metadata reserved for future batched pipelines; must be a positive integer                                                                                     |
@@ -50,7 +51,7 @@ Registered names are matched case-insensitively (and punctuation-insensitively f
 
 - **Single image**: `(image, saved_path)`.
   - Deep backend: `image` is a `PIL.Image.Image`.
-  - Traditional backend: `image` is a `numpy.ndarray`.
+- Traditional backend: `image` is a RGB `numpy.ndarray`.
   - `saved_path` is a `Path`, or `None` when `save=False`.
 - **Directory input**: a list of saved `Path` objects in deterministic (sorted) source-path order. Relative subdirectories and source suffixes are preserved.
 
@@ -84,6 +85,7 @@ Backend aliases: deep = `deep`/`deeplearning`/`deep_learning`/`dl`/`model`; trad
 
 - `config` and remaining `**kwargs` are passed to `LLVEnhancer.create_enhancer()`; parameters unsupported by the selected algorithm are ignored with a `UserWarning`.
 - Per-image overrides can also be passed to `Predictor.predict_single()`.
+- `value_range="auto"` preserves ordinary float `[0,1]` and `[0,255]` conventions. Use `"byte"` for an ambiguous byte-range float image whose maximum is `<= 1`. Negative or float values above `255` require an explicit valid custom range; non-finite inputs are always rejected.
 
 ### Unified `Predictor` object
 

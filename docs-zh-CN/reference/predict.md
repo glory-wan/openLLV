@@ -23,6 +23,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `backend` | `str` | `"auto"` | `"auto"`、深度后端别名或传统后端别名，见 [后端解析](#后端解析) |
 | `output_dir` | `Optional[Union[str, Path]]` | `None` | 省略 `output` 时的默认输出目录 |
 | `config` | `Optional[Dict[str, Any]]` | `None` | 模型或算法配置，传给后端 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 仅传统算法：输入值域解释。自动推断通常的浮点 `[0,1]` 或 `[0,255]`；显式/自定义值域会被校验 |
 | `device` | `Optional[Any]` | `None` | 深度后端设备；`None` → CUDA 可用则 CUDA，否则 CPU |
 | `transform` | `Optional[Any]` | `None` | 深度后端输入变换（可调用对象或 torchvision v2 变换列表） |
 | `batch_size` | `int` | `1` | 深度后端预留元数据；必须为正整数 |
@@ -50,7 +51,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 - **单图**：`(image, saved_path)`。
   - 深度后端：`image` 为 `PIL.Image.Image`。
-  - 传统后端：`image` 为 `numpy.ndarray`。
+- 传统后端：`image` 为 RGB `numpy.ndarray`。
   - `saved_path` 为 `Path`；`save=False` 时为 `None`。
 - **目录输入**：按源路径排序的 `Path` 列表；递归处理，保留相对子目录与源后缀。
 
@@ -84,6 +85,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 - `config` 与其余 `**kwargs` 传给 `LLVEnhancer.create_enhancer()`；所选算法不支持的参数被忽略并发出 `UserWarning`。
 - 逐图参数覆盖也可传给 `Predictor.predict_single()`。
+- `value_range="auto"` 会保持通常的浮点 `[0,1]` 与 `[0,255]` 约定。最大值 `<= 1` 的字节值域浮点图存在歧义，应使用 `"byte"`。负值或大于 `255` 的浮点值需要显式有效的自定义值域；非有限输入值始终会被拒绝。
 
 ### 统一 `Predictor` 对象
 

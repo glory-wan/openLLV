@@ -15,6 +15,7 @@ class _RetinexBase(LLVEnhancer, ABC):
     """Base implementation shared by Retinex algorithms."""
 
     aliases = []
+    working_range = "unit"
 
     def __init__(
         self,

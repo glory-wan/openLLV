@@ -19,7 +19,7 @@ openLLV.imwrite(
 
 | Parameter | Type | Default | Meaning | Constraints |
 | --- | --- | --- | --- | --- |
-| `image` | `str`, `Path`, `bytes`, `bytearray`, `numpy.ndarray`, `PIL.Image.Image`, or `torch.Tensor` | required | Image data accepted by `ImageWriter`/`ImageReader`. | Tensor shapes are `[H,W]`, `[C,H,W]`, or `[1,C,H,W]`; batch size greater than 1 raises `ValueError`. |
+| `image` | `str`, `Path`, `bytes`, `bytearray`, `numpy.ndarray`, `PIL.Image.Image`, or `torch.Tensor` | required | Image data accepted by `ImageWriter`/`ImageReader`; three-channel NumPy and tensor values use RGB order. | Tensor shapes are `[H,W]`, `[C,H,W]`, or `[1,C,H,W]`; batch size greater than 1 raises `ValueError`. |
 | `output` | `Optional[Union[str, Path]]` | `None` | Exact file path when it has a suffix, otherwise an output directory. | `None` uses `results/`. |
 | `save_format` | `Optional[str]` | `None` | Keyword-only suffix/format override, with or without a leading dot. It overrides an explicit output-file suffix too. | Empty strings raise `ValueError`. |
 | `output_name` | `Optional[str]` | `None` | Keyword-only filename used when `output` is a directory or omitted. | If omitted, a source filename is preserved where possible; otherwise `image.png` is used. |
@@ -44,6 +44,7 @@ The final saved `pathlib.Path`. Parent directories are created automatically.
 - `save_format` replaces the suffix after path resolution.
 - JPEG output converts images outside `RGB`/`L` mode to RGB before saving.
 - Tensor floats in `[0,1]` are scaled to `[0,255]`; values are clipped to `uint8`.
+- Three-channel NumPy input is interpreted as RGB; OpenCV BGR conversion is internal to encoding.
 
 ### Raises
 

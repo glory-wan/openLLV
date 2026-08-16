@@ -207,6 +207,11 @@ class LLIEParameterTests(unittest.TestCase):
 
 
 class LLIEEnhancementTests(unittest.TestCase):
+    def test_llie_algorithms_use_unit_float_working_range(self):
+        for algorithm in LLIE_CLASSES:
+            with self.subTest(algorithm=algorithm.__name__):
+                self.assertEqual(algorithm.working_range, "unit")
+
     def test_all_algorithms_preserve_color_shape_dtype_and_range(self):
         image = rgb_sample()
         for algorithm in LLIE_CLASSES:
@@ -235,6 +240,30 @@ class LLIEEnhancementTests(unittest.TestCase):
                 self.assertGreaterEqual(float(output.min()), 0.0)
                 self.assertLessEqual(float(output.max()), 1.0)
                 self.assertTrue(np.all(np.isfinite(output)))
+
+    def test_all_algorithms_preserve_equivalent_input_range_semantics(self):
+        image = rgb_sample()
+        for algorithm in LLIE_CLASSES:
+            with self.subTest(algorithm=algorithm.__name__):
+                enhancer = algorithm()
+                uint8_output = enhancer.enhance(image)
+                float_byte_output = enhancer.enhance(
+                    image.astype(np.float32)
+                )
+                unit_output = enhancer.enhance(
+                    image.astype(np.float32) / 255.0
+                )
+
+                np.testing.assert_allclose(
+                    float_byte_output,
+                    uint8_output.astype(np.float32),
+                    atol=0.5,
+                )
+                np.testing.assert_allclose(
+                    unit_output * 255.0,
+                    float_byte_output,
+                    atol=1e-3,
+                )
 
     def test_gamma_matches_power_law_definition(self):
         image = np.array([[0, 64, 128, 255]], dtype=np.uint8)

@@ -23,7 +23,7 @@ GCP 使用自适应 gamma、大气光估计、透射恢复和百分位范围调�
 
 ## Implementation Notes
 
-GCP 将灰度与 BGRA 输入转换为三通道工作图，并保留灰度/alpha 布局和源值域。每次调用先取得已存参数，再应用全部运行时关键字覆盖值，最后校验合并映射。因此未知运行时键会保留但后续不读取；已知覆盖值不会修改实例。工厂构造会过滤不支持的键并告警。
+公共三通道输入和 NumPy 输出使用 RGB；GCP 仅在 `_enhance()` 内部使用 BGR/BGRA。它把灰度和 BGRA 工作输入转换为三通道图，并保留灰度/alpha 布局和源值域。每次调用先取得已存参数，再应用全部运行时关键字覆盖值，最后校验合并映射。因此未知运行时键会保留但后续不读取；已知覆盖值不会修改实例。工厂构造会过滤不支持的键并告警。
 
 ## Parameters
 
@@ -40,7 +40,8 @@ GCP 将灰度与 BGRA 输入转换为三通道工作图，并保留灰度/alpha 
 | `eps` | `float` | `0.000001` | 数值稳定下限。 | 必须 `> 0`；可运行时覆盖。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式。 | 其他值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 将输出转回输入 dtype。 | 非 `bool` 抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪到目标 dtype 有效范围。 | 非 `bool` 抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪到解析后的输入值域。 | 非 `bool` 抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域；自动区分通常的浮点 `[0,1]` 与 `[0,255]` 输入。 | 最大值 `<= 1` 的暗部字节值域浮点图须用 `"byte"`。自定义边界须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 

@@ -23,7 +23,7 @@ LIME 从逐像素通道最大值估计照明，以引导滤波细化，再用图
 
 ## Implementation Notes
 
-LIME 支持 BGR、灰度和 BGRA 数组并保留灰度/alpha 布局。整数输入会归一化并恢复 dtype 值域，浮点输入裁剪至 `[0, 1]`。每个算法参数均可传给 `enhance()` 单次覆盖，经校验且不修改已存状态。工厂创建会过滤不支持的构造键并告警。
+公共三通道输入和 NumPy 输出使用 RGB；LIME 仅把 BGR/BGRA 作为 `_enhance()` 内部布局，并在内部支持灰度图。它会保留灰度/alpha 布局。基类将解析后的源值域映射到 LIME 的 `[0,1]` 工作值域，随后恢复原输入的值域约定与可选 dtype。每个算法参数均可传给 `enhance()` 单次覆盖，经校验且不修改已存状态。工厂创建会过滤不支持的构造键并告警。
 
 ## Parameters
 
@@ -36,7 +36,8 @@ LIME 支持 BGR、灰度和 BGRA 数组并保留灰度/alpha 布局。整数输�
 | `exposure` | `float` | `1.0` | 照明校正后的全局乘数。 | 必须 `> 0`；可运行时覆盖。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式。 | 其他值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 将输出转回输入 dtype。 | 非 `bool` 抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪到目标 dtype 有效范围。 | 非 `bool` 抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪到解析后的输入值域。 | 非 `bool` 抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域；自动区分通常的浮点 `[0,1]` 与 `[0,255]` 输入。 | 最大值 `<= 1` 的暗部字节值域浮点图须用 `"byte"`。自定义边界须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 

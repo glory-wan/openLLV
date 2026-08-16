@@ -23,7 +23,7 @@ NPE estimates bright-pass illumination, applies a bi-log mapping, restores refle
 
 ## Implementation Notes
 
-NPE supports BGR, grayscale, and BGRA arrays and preserves grayscale/alpha layout. It normalizes integer input, clips float input to `[0, 1]`, and restores the source range. All algorithm parameters are accepted as validated one-call `enhance()` overrides without mutating stored state. Factory creation filters unsupported constructor keys and warns.
+Public three-channel input and NumPy output use RGB; NPE supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to NPE's `[0,1]` working range and restores the original value-range convention and optional dtype. All algorithm parameters are accepted as validated one-call `enhance()` overrides without mutating stored state. Factory creation filters unsupported constructor keys and warns.
 
 ## Parameters
 
@@ -36,7 +36,8 @@ NPE supports BGR, grayscale, and BGRA arrays and preserves grayscale/alpha layou
 | `detail_weight` | `float` | `1.0` | Strength of the enhanced-minus-original detail term. | Must be `>= 0`. Runtime-overridable. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format. | Other values raise `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Cast output back to input dtype. | Non-`bool` raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip output to the destination dtype range. | Non-`bool` raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip output to the resolved input value range. | Non-`bool` raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range; auto distinguishes ordinary float `[0,1]` and `[0,255]` inputs. | Use `"byte"` when a byte-range float image has maximum `<= 1`. Custom bounds must be finite and increasing; out-of-range values raise `ValueError`. |
 
 ## Usage Example
 

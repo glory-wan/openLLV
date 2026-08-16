@@ -38,7 +38,7 @@ openLLV's HE supports grayscale images and multiple color spaces:
 - `yuv` / `ycbcr`
 - `lab`
 
-When a luminance-related color space is selected, the algorithm equalizes the luminance channel and then converts back to a BGR image.
+When a luminance-related color space is selected, the algorithm equalizes the luminance channel and converts back to BGR internally. `LLVEnhancer` then converts the public NumPy result to RGB.
 
 Main parameter:
 

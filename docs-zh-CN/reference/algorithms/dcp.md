@@ -23,7 +23,7 @@ DarkChannel 对反相输入应用暗通道先验，再将恢复图反相，得�
 
 ## Implementation Notes
 
-实现期望 8 位值域的三通道 BGR 图像，在反相图上估计大气光与透射率，以灰度引导滤波细化透射率，并返回按 `255` 缩放的值。与本组其他算法不同，`_enhance()` 忽略全部运行时关键字；请在构造时或通过 `set_params()` 修改算法值。工厂创建会过滤不支持的构造键并发出 `UserWarning`。
+公共三通道输入和 NumPy 输出使用 RGB。基类把它转换为 `_enhance()` 所需的三通道 BGR、8 位工作图，并在结束后转回 RGB。DCP 在反相图上估计大气光与透射率，以灰度引导滤波细化透射率，并返回按 `255` 缩放的值。与本组其他算法不同，`_enhance()` 忽略全部运行时关键字；请在构造时或通过 `set_params()` 修改算法值。工厂创建会过滤不支持的构造键并发出 `UserWarning`。
 
 ## Parameters
 
@@ -36,7 +36,8 @@ DarkChannel 对反相输入应用暗通道先验，再将恢复图反相，得�
 | `guided_eps` | `float` | `0.0001` | 引导滤波正则项。 | 必须 `> 0`。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式。 | 其他值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 将输出转回输入 dtype。 | 非 `bool` 抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪到目标 dtype 有效范围。 | 非 `bool` 抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪到解析后的输入值域。 | 非 `bool` 抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域；自动区分通常的浮点 `[0,1]` 与 `[0,255]` 输入。 | 最大值 `<= 1` 的暗部字节值域浮点图须用 `"byte"`。自定义边界须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 

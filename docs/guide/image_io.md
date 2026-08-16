@@ -8,7 +8,7 @@ openLLV exposes `ImageReader` and `ImageWriter` through compact top-level helper
 import openLLV as llv
 
 pil_image = llv.imread("input.jpg")
-bgr_array = llv.imread("input.jpg", output_format="numpy")
+rgb_array = llv.imread("input.jpg", output_format="numpy")
 ```
 
 Accepted input types are:
@@ -28,12 +28,14 @@ URL options such as `timeout`, `headers`, and `verify_ssl` are forwarded to the 
 | `output_format` | Result |
 | --- | --- |
 | `"pil"` | RGB `PIL.Image.Image` |
-| `"numpy"` | OpenCV-style BGR `numpy.ndarray` |
+| `"numpy"` | RGB `numpy.ndarray` |
 | `"bytes"` | Encoded image bytes |
 | `"base64"` | Base64-encoded image string |
 | `"file"` | Path string for a temporary image file |
 
 `tensor` is an accepted input type, not an `ImageReader` output format. Convert a PIL or NumPy result to a tensor with the transform used by your model or dataset.
+
+All public three-channel inputs and outputs use RGB order. Traditional OpenCV algorithms convert RGB to BGR only inside their implementation boundary and convert their public NumPy results back to RGB.
 
 For byte/base64 output when the source has no detectable suffix, provide `ext`:
 
@@ -75,4 +77,3 @@ When `output` is omitted, `ImageWriter` uses `results/`. A source filename is pr
 ## Aliases
 
 `read_image()` is an alias of `imread()`, and `write_image()` is an alias of `imwrite()`.
-

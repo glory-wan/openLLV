@@ -23,7 +23,7 @@ MSRCR adds channel color restoration and global gain/offset to Multi Scale Retin
 
 ## Implementation Notes
 
-After MSR, color input receives `beta * (log(alpha*channel+eps)-log(channel_sum+eps))`; the restored response is `gain * (color_restoration * retinex + offset)`. Grayscale uses `gain * (retinex + offset)`. Output is percentile-normalized; alpha is preserved. All MSRCR-specific values and `scales` accept per-call overrides without instance mutation.
+Public three-channel input and NumPy output use RGB; the base class performs the internal BGR round trip around `_enhance()`. After MSR, color input receives `beta * (log(alpha*channel+eps)-log(channel_sum+eps))`; the restored response is `gain * (color_restoration * retinex + offset)`. Grayscale uses `gain * (retinex + offset)`. Output is percentile-normalized; alpha is preserved. All MSRCR-specific values and `scales` accept per-call overrides without instance mutation.
 
 ## Parameters
 
@@ -39,7 +39,8 @@ After MSR, color input receives `beta * (log(alpha*channel+eps)-log(channel_sum+
 | `eps` | `float` | `1e-6` | Stabilizer; must be greater than zero. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format; invalid value raises `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Preserve input dtype; non-boolean raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip to valid dtype range; non-boolean raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip to the resolved input value range; non-boolean raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range. Auto infers float `[0,1]` or `[0,255]`; use `"byte"` for ambiguous dark byte-range floats whose maximum is `<= 1`. Custom bounds must be finite and increasing. Values outside the selected range raise `ValueError`. |
 
 ## Usage Example
 

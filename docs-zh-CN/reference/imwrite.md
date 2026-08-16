@@ -19,7 +19,7 @@ openLLV.imwrite(
 
 | Parameter | Type | Default | Meaning | Constraints |
 | --- | --- | --- | --- | --- |
-| `image` | `str`、`Path`、`bytes`、`bytearray`、`numpy.ndarray`、`PIL.Image.Image` 或 `torch.Tensor` | 必填 | `ImageWriter`/`ImageReader` 接受的图像数据。 | Tensor 形状为 `[H,W]`、`[C,H,W]` 或 `[1,C,H,W]`；batch size 大于 1 抛 `ValueError`。 |
+| `image` | `str`、`Path`、`bytes`、`bytearray`、`numpy.ndarray`、`PIL.Image.Image` 或 `torch.Tensor` | 必填 | `ImageWriter`/`ImageReader` 接受的图像数据；三通道 NumPy 和 tensor 值使用 RGB 顺序。 | Tensor 形状为 `[H,W]`、`[C,H,W]` 或 `[1,C,H,W]`；batch size 大于 1 抛 `ValueError`。 |
 | `output` | `Optional[Union[str, Path]]` | `None` | 带后缀时为精确文件路径，否则为输出目录。 | `None` 使用 `results/`。 |
 | `save_format` | `Optional[str]` | `None` | 仅关键字的后缀/格式覆盖，可带或不带前导点；也会覆盖显式输出文件的后缀。 | 空字符串抛 `ValueError`。 |
 | `output_name` | `Optional[str]` | `None` | `output` 为目录或省略时使用的仅关键字文件名。 | 省略时尽量保留来源文件名，否则使用 `image.png`。 |
@@ -44,6 +44,7 @@ openLLV.imwrite(
 - `save_format` 在路径解析后替换后缀。
 - JPEG 输出会先把非 `RGB`/`L` 模式图像转为 RGB。
 - `[0,1]` tensor 浮点值缩放至 `[0,255]`，所有值裁剪为 `uint8`。
+- 三通道 NumPy 输入按 RGB 解释；OpenCV 所需的 BGR 转换仅发生在内部编码阶段。
 
 ### Raises
 

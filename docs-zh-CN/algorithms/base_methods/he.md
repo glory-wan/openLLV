@@ -38,7 +38,7 @@ openLLV 的 HE 支持灰度图像和多种颜色空间：
 - `yuv` / `ycbcr`
 - `lab`
 
-选择与亮度相关的颜色空间时，算法会均衡亮度通道，然后转换回 BGR 图像。
+选择与亮度相关的颜色空间时，算法会均衡亮度通道并在内部转回 BGR；随后由 `LLVEnhancer` 把公共 NumPy 结果转换为 RGB。
 
 主要参数：
 
@@ -69,4 +69,3 @@ saved_paths = llv.predict(
     color_space="yuv",
 )
 ```
-

@@ -19,6 +19,7 @@ class NPE(LLVEnhancer):
 
     name = "NPE"
     aliases = []
+    working_range = "unit"
 
     def __init__(
         self,

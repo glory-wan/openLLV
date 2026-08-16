@@ -23,7 +23,7 @@ GCP implements Gamma Correction Prior enhancement using adaptive gamma, atmosphe
 
 ## Implementation Notes
 
-GCP converts grayscale and BGRA input to a three-channel working image, preserves grayscale/alpha layout, and restores the source range. Each call starts with stored parameters, applies every runtime keyword as an override, then validates the combined mapping. Therefore unknown runtime keys are retained but not read after validation; known overrides do not mutate the instance. Factory construction filters unsupported keys and warns.
+Public three-channel input and NumPy output use RGB; GCP uses BGR/BGRA only inside `_enhance()`. It converts grayscale and BGRA working input to three channels, preserves grayscale/alpha layout, and restores the source range. Each call starts with stored parameters, applies every runtime keyword as an override, then validates the combined mapping. Therefore unknown runtime keys are retained but not read after validation; known overrides do not mutate the instance. Factory construction filters unsupported keys and warns.
 
 ## Parameters
 
@@ -40,7 +40,8 @@ GCP converts grayscale and BGRA input to a three-channel working image, preserve
 | `eps` | `float` | `0.000001` | Numerical-stability floor. | Must be `> 0`. Runtime-overridable. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format. | Other values raise `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Cast output back to input dtype. | Non-`bool` raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip output to the destination dtype range. | Non-`bool` raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip output to the resolved input value range. | Non-`bool` raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range; auto distinguishes ordinary float `[0,1]` and `[0,255]` inputs. | Use `"byte"` when a byte-range float image has maximum `<= 1`. Custom bounds must be finite and increasing; out-of-range values raise `ValueError`. |
 
 ## Usage Example
 

@@ -25,7 +25,7 @@ For one image, prediction returns a pair:
 enhanced_image, saved_path = openLLV.predict(...)
 ```
 
-The deep backend returns a PIL image; the traditional backend returns a NumPy array. `saved_path` is a `Path`, or `None` when `save=False`.
+The deep backend returns an RGB PIL image; the traditional backend returns an RGB NumPy array. `saved_path` is a `Path`, or `None` when `save=False`.
 
 For a directory, prediction recursively processes supported images and returns a deterministic list of saved `Path` objects. Relative subdirectories and source suffixes are preserved.
 
@@ -43,6 +43,8 @@ enhanced, saved_path = llv.predict(
 ```
 
 Algorithm constructor parameters can be passed with the top-level call. Method-specific per-image overrides can also be supplied when using `Predictor.predict_single()`.
+
+Traditional algorithms accept `value_range="auto"` (default), `"unit"`, `"byte"`, or a custom `(min, max)` range. Auto preserves ordinary float `[0,1]` and float `[0,255]` conventions. For a byte-range float image whose maximum is `<= 1`, pass `value_range="byte"` because its numeric content is indistinguishable from a unit-range image.
 
 ## Deep-Learning Model
 

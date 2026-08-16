@@ -23,7 +23,7 @@ MSR averages log-domain Retinex responses over multiple Gaussian surround scales
 
 ## Implementation Notes
 
-Each scale produces an SSR response; responses are averaged and percentile-normalized per channel. Grayscale and alpha layouts are preserved. `scales` may be overridden per enhancement call without mutating the configured tuple.
+Public three-channel input and NumPy output use RGB; the base class performs the internal BGR round trip around `_enhance()`. Each scale produces an SSR response; responses are averaged and percentile-normalized per channel. Grayscale and alpha layouts are preserved. `scales` may be overridden per enhancement call without mutating the configured tuple.
 
 ## Parameters
 
@@ -35,7 +35,8 @@ Each scale produces an SSR response; responses are averaged and percentile-norma
 | `eps` | `float` | `1e-6` | Stabilizer; must be greater than zero. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format; invalid value raises `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Preserve input dtype; non-boolean raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip to valid dtype range; non-boolean raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip to the resolved input value range; non-boolean raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range. Auto infers float `[0,1]` or `[0,255]`; use `"byte"` for ambiguous dark byte-range floats whose maximum is `<= 1`. Custom bounds must be finite and increasing. Values outside the selected range raise `ValueError`. |
 
 ## Usage Example
 

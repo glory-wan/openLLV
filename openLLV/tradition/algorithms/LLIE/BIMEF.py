@@ -19,6 +19,7 @@ class BIMEF(LLVEnhancer):
 
     name = "BIMEF"
     aliases = []
+    working_range = "unit"
 
     def __init__(
         self,

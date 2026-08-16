@@ -21,7 +21,7 @@ AHE 通过固定 `clipLimit=255.0` 的 OpenCV CLAHE 近似自适应直方图均�
 
 ## Implementation Notes
 
-灰度图直接均衡。三通道 BGR 输入中，`rgb` 均衡所有 BGR 通道，其他空间分别均衡 V、L、Y 或 L 并转回 BGR。非 `uint8` 数据先转为 `uint8`。按次算法参数被忽略。`set_params` 不会重建缓存的 OpenCV CLAHE 对象，因此要有效改变 `tile_grid_size` 应新建实例。
+公共三通道输入和 NumPy 输出使用 RGB。`LLVEnhancer` 在 `_enhance()` 前把 RGB 转为内部 BGR，并在结束后把结果转回 RGB。灰度图直接均衡；内部 `rgb` 模式均衡所有 BGR 通道，其他空间分别均衡 V、L、Y 或 L 并转回 BGR。非 `uint8` 数据先转为 `uint8`。按次算法参数被忽略。`set_params` 不会重建缓存的 OpenCV CLAHE 对象，因此要有效改变 `tile_grid_size` 应新建实例。
 
 ## Parameters
 | 参数 | 类型 | 默认值 | 含义 / 约束 |
@@ -30,7 +30,8 @@ AHE 通过固定 `clipLimit=255.0` 的 OpenCV CLAHE 近似自适应直方图均�
 | `tile_grid_size` | `Tuple[int, int]` | `(8, 8)` | 恰含两个正的非布尔整数的元组/列表，否则抛 `ValueError`。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式；非法值抛 `ValueError`。传统预测器强制实例为 `"numpy"`。 |
 | `keep_dtype` | `bool` | `True` | 转回输入 dtype；非布尔值抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 转换前裁剪到输入 dtype 范围；非布尔值抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 转换前裁剪到解析后的输入值域；非布尔值抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域。自动推断浮点 `[0,1]` 或 `[0,255]`；最大值 `<= 1` 的暗部字节值域浮点图须显式用 `"byte"`。自定义边界必须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 ```python

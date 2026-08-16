@@ -8,7 +8,7 @@ openLLV 通过简洁的顶层辅助函数公开 `ImageReader` 和 `ImageWriter`�
 import openLLV as llv
 
 pil_image = llv.imread("input.jpg")
-bgr_array = llv.imread("input.jpg", output_format="numpy")
+rgb_array = llv.imread("input.jpg", output_format="numpy")
 ```
 
 支持的输入类型包括：
@@ -28,12 +28,14 @@ bgr_array = llv.imread("input.jpg", output_format="numpy")
 | `output_format` | 结果 |
 | --- | --- |
 | `"pil"` | RGB `PIL.Image.Image` |
-| `"numpy"` | OpenCV 风格的 BGR `numpy.ndarray` |
+| `"numpy"` | RGB `numpy.ndarray` |
 | `"bytes"` | 编码后的图像字节 |
 | `"base64"` | Base64 编码的图像字符串 |
 | `"file"` | 临时图像文件的路径字符串 |
 
 `tensor` 是一种可接受的输入类型，而不是 `ImageReader` 的输出格式。请使用模型或数据集所采用的变换，将 PIL 或 NumPy 结果转换为张量。
+
+所有公共三通道输入和输出统一采用 RGB 顺序。传统 OpenCV 算法仅在内部实现边界把 RGB 转为 BGR，并在返回公共 NumPy 结果前转回 RGB。
 
 当源数据没有可检测的扩展名时，如需输出字节或 Base64，请提供 `ext`：
 
@@ -75,4 +77,3 @@ saved_path = llv.imwrite(
 ## 别名
 
 `read_image()` 是 `imread()` 的别名，`write_image()` 是 `imwrite()` 的别名。
-

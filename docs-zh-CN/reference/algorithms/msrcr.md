@@ -21,7 +21,7 @@ MSRCR 在多尺度 Retinex 上加入逐通道颜色恢复及全局增益/偏移�
 
 ## Implementation Notes
 
-MSR 后，彩色输入使用 `beta * (log(alpha*channel+eps)-log(channel_sum+eps))`，恢复响应为 `gain * (color_restoration * retinex + offset)`；灰度使用 `gain * (retinex + offset)`。输出按百分位归一化并保留 alpha。所有 MSRCR 专有值及 `scales` 均支持按次覆盖，不修改实例。
+公共三通道输入和 NumPy 输出使用 RGB；基类在 `_enhance()` 边界完成内部 BGR 往返转换。MSR 后，彩色输入使用 `beta * (log(alpha*channel+eps)-log(channel_sum+eps))`，恢复响应为 `gain * (color_restoration * retinex + offset)`；灰度使用 `gain * (retinex + offset)`。输出按百分位归一化并保留 alpha。所有 MSRCR 专有值及 `scales` 均支持按次覆盖，不修改实例。
 
 ## Parameters
 | 参数 | 类型 | 默认值 | 含义 / 约束 |
@@ -36,7 +36,8 @@ MSR 后，彩色输入使用 `beta * (log(alpha*channel+eps)-log(channel_sum+eps
 | `eps` | `float` | `1e-6` | 稳定项；须大于零。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式；非法值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 保留输入 dtype；非布尔值抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪至有效 dtype 范围；非布尔值抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪至解析后的输入值域；非布尔值抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域。自动推断浮点 `[0,1]` 或 `[0,255]`；最大值 `<= 1` 的暗部字节值域浮点图须显式用 `"byte"`。自定义边界必须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 ```python

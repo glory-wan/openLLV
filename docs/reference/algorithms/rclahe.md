@@ -23,7 +23,7 @@ RCLAHE recursively applies the same CLAHE operation to strengthen local contrast
 
 ## Implementation Notes
 
-Input is converted to `uint8`, then CLAHE is repeated `iterations` times. Channel behavior matches CLAHE. Per-call algorithm kwargs are ignored. `set_params` does not rebuild the cached OpenCV object, so reconstruct the enhancer after changing `clip_limit` or `tile_grid_size`; changing `iterations` does take effect.
+Public three-channel input and NumPy output use RGB; the base class converts to internal BGR only around `_enhance()`. Input is converted to `uint8`, then CLAHE is repeated `iterations` times. Channel behavior matches CLAHE. Per-call algorithm kwargs are ignored. `set_params` does not rebuild the cached OpenCV object, so reconstruct the enhancer after changing `clip_limit` or `tile_grid_size`; changing `iterations` does take effect.
 
 ## Parameters
 
@@ -35,7 +35,8 @@ Input is converted to `uint8`, then CLAHE is repeated `iterations` times. Channe
 | `iterations` | `int` | `3` | Positive non-boolean integer; otherwise `ValueError`. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format; invalid value raises `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Preserve input dtype; non-boolean raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip to valid dtype range; non-boolean raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip to the resolved input value range; non-boolean raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range. Auto infers float `[0,1]` or `[0,255]`; use `"byte"` for ambiguous dark byte-range floats whose maximum is `<= 1`. Custom bounds must be finite and increasing. Values outside the selected range raise `ValueError`. |
 
 ## Usage Example
 

@@ -48,7 +48,7 @@ openLLV 模型/算法组件文档模板。
 <!--
 参数表：构造参数 + 基类参数 + 模型 config 键，逐个列出，来源必须是源码。
 列：Parameter | Type | Default | Meaning | Constraints
-基类参数（如 output_type / keep_dtype / clip_output）也列出，并注明属于基类。
+基类参数（如 output_type / keep_dtype / clip_output / value_range）也列出，并注明属于基类。
 模型参数以 config 键形式给出（如 input_gamma: float = 1.0）。
 -->
 

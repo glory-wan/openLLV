@@ -52,8 +52,8 @@ class ImageReader:
     """Unified image reader for_teach common image input formats.
 
     The reader accepts local files, URLs, base64 strings, bytes, PIL images,
-    numpy arrays, and torch tensors. For backward compatibility, numpy output
-    uses OpenCV-style BGR channel order. PIL output uses RGB channel order.
+    numpy arrays, and torch tensors. Three-channel public inputs and outputs
+    use RGB channel order for every output format.
     """
 
     SUPPORTED_EXTENSIONS = {
@@ -113,7 +113,10 @@ class ImageReader:
         if output_format == ImageFormat.FILE:
             temp_file = tempfile.NamedTemporaryFile(suffix=f".{self.ext}", delete=False)
             temp_file.close()
-            cv2.imwrite(temp_file.name, self._ensure_uint8(numpy_image))
+            cv2.imwrite(
+                temp_file.name,
+                self._rgb_to_bgr(self._ensure_uint8(numpy_image)),
+            )
             return temp_file.name
 
         raise ValueError(f"Unsupported output format: {output_format}")
@@ -340,7 +343,7 @@ class ImageReader:
             return file.read()
 
     def _to_numpy(self) -> np.ndarray:
-        """Convert current input data to a BGR numpy image.
+        """Convert current input data to a RGB numpy image.
 
         Returns:
             Image as a numpy array.
@@ -384,89 +387,86 @@ class ImageReader:
         return any(sep in value for sep in ("/", "\\"))
 
     def _bytes_to_numpy(self, bytes_data: Union[bytes, bytearray]) -> np.ndarray:
-        """Decode image bytes into a BGR numpy image.
+        """Decode image bytes into a RGB numpy image.
 
         Args:
             bytes_data: Encoded image bytes.
 
         Returns:
-            Decoded BGR image array.
+            Decoded RGB image array.
         """
-        rgb_image = self.convertor(convert_way="bytes2img", ext=self.ext, data=bytes_data)
-        return self._rgb_to_bgr(rgb_image)
+        return self.convertor(convert_way="bytes2img", ext=self.ext, data=bytes_data)
 
     def _base64_to_numpy(self, base64_str: Union[str, bytes, bytearray]) -> np.ndarray:
-        """Decode base64 image data into a BGR numpy image.
+        """Decode base64 image data into a RGB numpy image.
 
         Args:
             base64_str: Base64 string, data URI, or bytes.
 
         Returns:
-            Decoded BGR image array.
+            Decoded RGB image array.
         """
-        rgb_image = self.convertor(convert_way="base642img", ext=self.ext, data=base64_str)
-        return self._rgb_to_bgr(rgb_image)
+        return self.convertor(convert_way="base642img", ext=self.ext, data=base64_str)
 
     def _numpy_to_bytes(self, numpy_image: np.ndarray, ext: str = "jpg") -> bytes:
-        """Encode a BGR numpy image to image bytes.
+        """Encode a RGB numpy image to image bytes.
 
         Args:
-            numpy_image: BGR numpy image.
+            numpy_image: RGB numpy image.
             ext: Output image extension.
 
         Returns:
             Encoded image bytes.
         """
-        rgb_image = self._bgr_to_rgb(self._ensure_uint8(numpy_image))
+        rgb_image = self._ensure_uint8(numpy_image)
         return self.convertor(convert_way="img2bytes", ext=ext, data=rgb_image)
 
     def _numpy_to_base64(self, numpy_image: np.ndarray, ext: str = "jpg") -> str:
-        """Encode a BGR numpy image to base64 image data.
+        """Encode a RGB numpy image to base64 image data.
 
         Args:
-            numpy_image: BGR numpy image.
+            numpy_image: RGB numpy image.
             ext: Output image extension.
 
         Returns:
             Base64-encoded image string.
         """
-        rgb_image = self._bgr_to_rgb(self._ensure_uint8(numpy_image))
+        rgb_image = self._ensure_uint8(numpy_image)
         return self.convertor(convert_way="img2base64", ext=ext, data=rgb_image)
 
     def _pil_to_numpy(self, pil_image: Image.Image) -> np.ndarray:
-        """Convert a PIL image to a BGR numpy image.
+        """Convert a PIL image to a RGB numpy image.
 
         Args:
             pil_image: PIL image.
 
         Returns:
-            BGR numpy image.
+            RGB numpy image.
         """
-        rgb_image = np.array(pil_image.convert("RGB"))
-        return self._rgb_to_bgr(rgb_image)
+        return np.array(pil_image.convert("RGB"))
 
     def _numpy_to_pil(self, numpy_image: np.ndarray) -> Image.Image:
-        """Convert a BGR numpy image to a RGB PIL image.
+        """Convert a RGB numpy image to a RGB PIL image.
 
         Args:
-            numpy_image: BGR numpy image.
+            numpy_image: RGB numpy image.
 
         Returns:
             RGB PIL image.
         """
-        rgb_image = self._bgr_to_rgb(self._ensure_uint8(numpy_image))
+        rgb_image = self._ensure_uint8(numpy_image)
         return Image.fromarray(rgb_image)
 
     @staticmethod
     def _tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
-        """Convert a tensor image to a BGR numpy image.
+        """Convert a tensor image to a RGB numpy image.
 
         Args:
             tensor: Tensor with shape ``[H, W]``, ``[C, H, W]``, or
                 ``[1, C, H, W]``.
 
         Returns:
-            BGR numpy image with dtype ``uint8``.
+            RGB numpy image with dtype ``uint8``.
 
         Raises:
             ValueError: If the tensor shape is unsupported or contains more
@@ -489,30 +489,30 @@ class ImageReader:
         array = _ensure_uint8_from_float(array)
 
         if array.ndim == 2:
-            return cv2.cvtColor(array, cv2.COLOR_GRAY2BGR)
+            return cv2.cvtColor(array, cv2.COLOR_GRAY2RGB)
         if array.shape[2] == 1:
-            return cv2.cvtColor(array[:, :, 0], cv2.COLOR_GRAY2BGR)
+            return cv2.cvtColor(array[:, :, 0], cv2.COLOR_GRAY2RGB)
         if array.shape[2] == 4:
-            return cv2.cvtColor(array, cv2.COLOR_RGBA2BGR)
-        return cv2.cvtColor(array[:, :, :3], cv2.COLOR_RGB2BGR)
+            return cv2.cvtColor(array, cv2.COLOR_RGBA2RGB)
+        return array[:, :, :3]
 
     @staticmethod
     def _normalize_numpy_input(image: np.ndarray) -> np.ndarray:
-        """Normalize numpy image channel layout to BGR.
+        """Normalize numpy image channel layout to RGB.
 
         Args:
             image: Input numpy image.
 
         Returns:
-            BGR numpy image when conversion is needed; otherwise the original
+            RGB numpy image when conversion is needed; otherwise the original
             image array.
         """
         if image.ndim == 2:
-            return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         if image.ndim == 3 and image.shape[2] == 4:
-            return cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)
+            return cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
         if image.ndim == 3 and image.shape[2] == 3:
-            return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            return image
         return image
 
     @staticmethod
@@ -531,16 +531,19 @@ class ImageReader:
 
     @staticmethod
     def _rgb_to_bgr(image: np.ndarray) -> np.ndarray:
-        """Convert a RGB image array to BGR when applicable.
+        """Convert a RGB/RGBA image array for OpenCV when applicable.
 
         Args:
             image: Input image array.
 
         Returns:
-            BGR image array, or the original image if conversion is not needed.
+            BGR/BGRA image array, or the original image if conversion is not
+            needed.
         """
         if image.ndim == 3 and image.shape[2] == 3:
             return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        if image.ndim == 3 and image.shape[2] == 4:
+            return cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
         return image
 
     @staticmethod

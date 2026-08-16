@@ -125,6 +125,7 @@ class EnhancerRegistryTests(unittest.TestCase):
                 "keep_dtype",
                 "offset",
                 "output_type",
+                "value_range",
             ],
         )
 
@@ -182,12 +183,13 @@ class EnhancerParameterTests(unittest.TestCase):
                 "output_type": "numpy",
                 "keep_dtype": True,
                 "clip_output": True,
+                "value_range": "auto",
             },
         )
         self.assertEqual(
             repr(enhancer),
             "ExampleEnhancer(output_type='numpy', keep_dtype=True, "
-            "clip_output=True)",
+            "clip_output=True, value_range='auto')",
         )
 
     def test_constructor_validates_output_type_and_boolean_options(self):
@@ -198,17 +200,28 @@ class EnhancerParameterTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "clip_output must be bool"):
             ExampleEnhancer(clip_output="yes")
 
+        with self.assertRaisesRegex(ValueError, "value_range must be"):
+            ExampleEnhancer(value_range="wide")
+        with self.assertRaisesRegex(TypeError, "two-value tuple/list"):
+            ExampleEnhancer(value_range=(0,))
+        with self.assertRaisesRegex(ValueError, "less than maximum"):
+            ExampleEnhancer(value_range=(1, 1))
+        with self.assertRaisesRegex(ValueError, "must be finite"):
+            ExampleEnhancer(value_range=(0, np.inf))
+
     def test_set_params_updates_values_returns_self_and_revalidates(self):
         enhancer = ExampleEnhancer()
         returned = enhancer.set_params(
             output_type="pil",
             keep_dtype=False,
             clip_output=False,
+            value_range="byte",
         )
         self.assertIs(returned, enhancer)
         self.assertEqual(enhancer.output_type, "pil")
         self.assertFalse(enhancer.keep_dtype)
         self.assertFalse(enhancer.clip_output)
+        self.assertEqual(enhancer.value_range, "byte")
 
         with self.assertRaisesRegex(ValueError, "has no parameter"):
             enhancer.set_params(missing=True)
@@ -216,7 +229,11 @@ class EnhancerParameterTests(unittest.TestCase):
     def test_dtype_range_clip_and_cast_helpers(self):
         self.assertEqual(LLVEnhancer._dtype_range(np.uint8), (0.0, 255.0))
         self.assertEqual(LLVEnhancer._dtype_range(np.int16), (-32768.0, 32767.0))
-        self.assertEqual(LLVEnhancer._dtype_range(np.float32), (0.0, 1.0))
+        float_info = np.finfo(np.float32)
+        self.assertEqual(
+            LLVEnhancer._dtype_range(np.float32),
+            (float(float_info.min), float(float_info.max)),
+        )
         self.assertEqual(LLVEnhancer._dtype_range(None), (0.0, 255.0))
 
         clipped = LLVEnhancer._clip_to_valid_range(
@@ -236,11 +253,28 @@ class EnhancerParameterTests(unittest.TestCase):
 
 
 class EnhancerExecutionTests(unittest.TestCase):
+    def test_public_rgb_is_bgr_only_inside_algorithm_boundary(self):
+        observed = {}
+
+        class ChannelProbeEnhancer(LLVEnhancer):
+            def _enhance(self, image: np.ndarray, **kwargs) -> np.ndarray:
+                observed["internal"] = image.copy()
+                return image
+
+        public_rgb = np.array([[[255, 0, 0]]], dtype=np.uint8)
+        output = ChannelProbeEnhancer().enhance(public_rgb)
+
+        np.testing.assert_array_equal(
+            observed["internal"],
+            np.array([[[0, 0, 255]]], dtype=np.uint8),
+        )
+        np.testing.assert_array_equal(output, public_rgb)
+
     def test_numpy_input_is_enhanced_clipped_and_cast_to_original_dtype(self):
         image = rgb_sample()
         result = ExampleEnhancer(offset=10)(image)
         expected = np.clip(
-            image[:, :, ::-1].astype(np.float32) + 10,
+            image.astype(np.float32) + 10,
             0,
             255,
         ).astype(np.uint8)
@@ -254,10 +288,13 @@ class EnhancerExecutionTests(unittest.TestCase):
         default = enhancer.enhance(image)
         overridden = enhancer.enhance(image, offset=5)
 
-        bgr = image[:, :, ::-1].astype(np.float32)
         expected_difference = (
-            np.clip(bgr + 5, 0, 255).astype(np.uint8).astype(np.int16)
-            - np.clip(bgr + 1, 0, 255).astype(np.uint8).astype(np.int16)
+            np.clip(image.astype(np.float32) + 5, 0, 255)
+            .astype(np.uint8)
+            .astype(np.int16)
+            - np.clip(image.astype(np.float32) + 1, 0, 255)
+            .astype(np.uint8)
+            .astype(np.int16)
         )
         np.testing.assert_array_equal(
             overridden.astype(np.int16) - default.astype(np.int16),
@@ -271,7 +308,7 @@ class EnhancerExecutionTests(unittest.TestCase):
         ).enhance(rgb_sample())
 
         self.assertEqual(output.dtype, np.float32)
-        self.assertAlmostEqual(float(output[0, 0, 0]), 30.5)
+        self.assertAlmostEqual(float(output[0, 0, 0]), 10.5)
 
     def test_float_input_is_clipped_to_unit_range(self):
         image = np.array(
@@ -284,6 +321,76 @@ class EnhancerExecutionTests(unittest.TestCase):
         self.assertGreaterEqual(float(output.min()), 0.0)
         self.assertLessEqual(float(output.max()), 1.0)
 
+    def test_float_byte_range_is_preserved_instead_of_clipped_to_unit(self):
+        image = rgb_sample().astype(np.float32)
+        output = ExampleEnhancer().enhance(image)
+
+        self.assertEqual(output.dtype, np.float32)
+        np.testing.assert_array_equal(output, image)
+        self.assertGreater(float(output.max()), 1.0)
+
+    def test_byte_unit_and_float_byte_inputs_are_semantically_equivalent(self):
+        image = rgb_sample()
+        uint8_output = ExampleEnhancer().enhance(image)
+        float_byte_output = ExampleEnhancer().enhance(image.astype(np.float32))
+        unit_output = ExampleEnhancer().enhance(
+            image.astype(np.float32) / 255.0
+        )
+
+        np.testing.assert_allclose(float_byte_output, uint8_output, atol=1e-6)
+        np.testing.assert_allclose(unit_output * 255.0, uint8_output, atol=1e-5)
+
+    def test_explicit_value_range_handles_ambiguous_and_custom_inputs(self):
+        ambiguous_byte = np.array(
+            [[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]],
+            dtype=np.float32,
+        )
+        enhancer = ExampleEnhancer(offset=1.0)
+
+        explicit_byte = enhancer.enhance(
+            ambiguous_byte,
+            value_range="byte",
+        )
+        np.testing.assert_array_equal(
+            explicit_byte,
+            np.array(
+                [[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]],
+                dtype=np.float32,
+            ),
+        )
+        self.assertEqual(enhancer.value_range, "auto")
+
+        class UnitIdentityEnhancer(LLVEnhancer):
+            working_range = "unit"
+
+            def _enhance(self, image: np.ndarray, **kwargs) -> np.ndarray:
+                return image
+
+        custom = np.array(
+            [[[-1.0, -1.0, -1.0], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]],
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(
+            UnitIdentityEnhancer(value_range=(-1, 1)).enhance(custom),
+            custom,
+        )
+
+    def test_auto_value_range_rejects_unsafe_float_inputs(self):
+        invalid_inputs = (
+            np.array([[-0.1, 0.0]], dtype=np.float32),
+            np.array([[0.0, 256.0]], dtype=np.float32),
+            np.array([[0.0, np.nan]], dtype=np.float32),
+        )
+        for image in invalid_inputs:
+            with self.subTest(image=image):
+                with self.assertRaises(ValueError):
+                    ExampleEnhancer().enhance(image)
+
+        with self.assertRaisesRegex(ValueError, "fall outside"):
+            ExampleEnhancer(value_range="unit").enhance(
+                np.array([[0.0, 2.0]], dtype=np.float32)
+            )
+
     def test_path_input_is_loaded_through_image_reader(self):
         image = rgb_sample()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -292,7 +399,7 @@ class EnhancerExecutionTests(unittest.TestCase):
             output = ExampleEnhancer().enhance(path)
 
         self.assertEqual(output.dtype, np.uint8)
-        np.testing.assert_array_equal(output, image[:, :, ::-1])
+        np.testing.assert_array_equal(output, image)
 
     def test_non_numpy_output_formats_are_supported(self):
         image = rgb_sample()
@@ -316,13 +423,37 @@ class EnhancerExecutionTests(unittest.TestCase):
         try:
             self.assertIsInstance(pil_output, Image.Image)
             self.assertEqual(pil_output.size, (2, 2))
+            np.testing.assert_array_equal(np.asarray(pil_output), image)
             self.assertTrue(byte_output.startswith(b"\x89PNG"))
             self.assertTrue(base64.b64decode(base64_output).startswith(b"\x89PNG"))
             self.assertTrue(file_output.is_file())
             with Image.open(io.BytesIO(byte_output)) as decoded:
                 self.assertEqual(decoded.size, (2, 2))
+                np.testing.assert_array_equal(
+                    np.asarray(decoded.convert("RGB")),
+                    image,
+                )
+            with Image.open(io.BytesIO(base64.b64decode(base64_output))) as decoded:
+                np.testing.assert_array_equal(np.asarray(decoded.convert("RGB")), image)
+            with Image.open(file_output) as decoded:
+                np.testing.assert_array_equal(np.asarray(decoded.convert("RGB")), image)
         finally:
             file_output.unlink(missing_ok=True)
+
+    def test_non_numpy_output_scales_unit_float_values_for_encoding(self):
+        image = np.array(
+            [[[0.0, 0.5, 1.0], [1.0, 0.5, 0.0]]],
+            dtype=np.float32,
+        )
+        output = ExampleEnhancer(output_type="pil").enhance(image)
+
+        np.testing.assert_array_equal(
+            np.asarray(output),
+            np.array(
+                [[[0, 128, 255], [255, 128, 0]]],
+                dtype=np.uint8,
+            ),
+        )
 
     def test_invalid_enhancer_return_type_is_rejected(self):
         with self.assertRaisesRegex(TypeError, "must return np.ndarray"):

@@ -110,8 +110,8 @@ class Predictor:
             **kwargs: Additional keyword arguments forwarded to the enhancer.
 
         Returns:
-            Tuple of enhanced image array and saved path. The saved path is
-            ``None`` when ``save`` is ``False``.
+            Tuple of enhanced RGB image array and saved path. The saved path
+            is ``None`` when ``save`` is ``False``.
 
         Raises:
             TypeError: If the enhancer does not return a NumPy array.
@@ -391,7 +391,7 @@ class Predictor:
 
     @staticmethod
     def _save_numpy_image(image: np.ndarray, save_path: Path) -> None:
-        """Save a NumPy image with OpenCV.
+        """Save a public RGB NumPy image with OpenCV.
 
         Args:
             image: Image array to save.
@@ -402,6 +402,10 @@ class Predictor:
         """
         save_path.parent.mkdir(parents=True, exist_ok=True)
         image = Predictor._ensure_uint8(image)
+        if image.ndim == 3 and image.shape[2] == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        elif image.ndim == 3 and image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
         ok = cv2.imwrite(str(save_path), image)
         if not ok:
             raise ValueError(f"Failed to save image to {save_path}.")

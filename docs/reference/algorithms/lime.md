@@ -23,7 +23,7 @@ LIME estimates illumination from the per-pixel channel maximum, refines it with 
 
 ## Implementation Notes
 
-LIME supports BGR, grayscale, and BGRA arrays and preserves grayscale/alpha layout. Integer input is normalized and restored to its dtype range; float input is clipped to `[0, 1]`. Each algorithm parameter may be supplied to `enhance()` for one call, where it is validated without mutating stored state. Factory creation filters and warns about unsupported constructor keys.
+Public three-channel input and NumPy output use RGB; LIME supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to LIME's `[0,1]` working range, then restores the original value-range convention and optional dtype. Each algorithm parameter may be supplied to `enhance()` for one call, where it is validated without mutating stored state. Factory creation filters and warns about unsupported constructor keys.
 
 ## Parameters
 
@@ -36,7 +36,8 @@ LIME supports BGR, grayscale, and BGRA arrays and preserves grayscale/alpha layo
 | `exposure` | `float` | `1.0` | Global multiplier after illumination correction. | Must be `> 0`. Runtime-overridable. |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | Base output format. | Other values raise `ValueError`. |
 | `keep_dtype` | `bool` | `True` | Cast output back to input dtype. | Non-`bool` raises `TypeError`. |
-| `clip_output` | `bool` | `True` | Clip output to the destination dtype range. | Non-`bool` raises `TypeError`. |
+| `clip_output` | `bool` | `True` | Clip output to the resolved input value range. | Non-`bool` raises `TypeError`. |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Input value range; auto distinguishes ordinary float `[0,1]` and `[0,255]` inputs. | Use `"byte"` when a byte-range float image has maximum `<= 1`. Custom bounds must be finite and increasing; out-of-range values raise `ValueError`. |
 
 ## Usage Example
 

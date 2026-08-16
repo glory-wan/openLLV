@@ -21,7 +21,7 @@ CLAHE 使用 OpenCV 执行限制对比度的局部直方图均衡。
 
 ## Implementation Notes
 
-灰度图直接均衡。BGR 输入中 `rgb` 处理所有通道，其他模式处理相应亮度/明度通道。非 `uint8` 输入先转换。按次算法参数被忽略。OpenCV 对象在构造时缓存，`set_params` 改变 `clip_limit` 或 `tile_grid_size` 不会重建它，应新建增强器。
+公共三通道输入和 NumPy 输出使用 RGB；`LLVEnhancer` 仅在 `_enhance()` 边界转换内部 BGR。灰度图直接均衡；内部 `rgb` 模式处理所有 BGR 通道，其他模式处理相应亮度/明度通道。非 `uint8` 输入先转换。按次算法参数被忽略。OpenCV 对象在构造时缓存，`set_params` 改变 `clip_limit` 或 `tile_grid_size` 不会重建它，应新建增强器。
 
 ## Parameters
 | 参数 | 类型 | 默认值 | 含义 / 约束 |
@@ -31,7 +31,8 @@ CLAHE 使用 OpenCV 执行限制对比度的局部直方图均衡。
 | `tile_grid_size` | `Tuple[int, int]` | `(8, 8)` | 恰含两个正的非布尔整数，否则抛 `ValueError`。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式；非法值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 保留输入 dtype；非布尔值抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪至有效 dtype 范围；非布尔值抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪至解析后的输入值域；非布尔值抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域。自动推断浮点 `[0,1]` 或 `[0,255]`；最大值 `<= 1` 的暗部字节值域浮点图须显式用 `"byte"`。自定义边界必须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 ```python

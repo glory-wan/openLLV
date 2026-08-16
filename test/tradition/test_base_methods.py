@@ -38,6 +38,11 @@ def gray_sample(height: int = 24, width: int = 28) -> np.ndarray:
 
 
 class BaseMethodRegistrationTests(unittest.TestCase):
+    def test_histogram_algorithms_use_byte_working_range(self):
+        for algorithm in ALGORITHMS:
+            with self.subTest(algorithm=algorithm.__name__):
+                self.assertEqual(algorithm.working_range, "byte")
+
     def test_algorithms_inherit_register_and_create_through_llv_enhancer(self):
         for name, algorithm in (
             ("ahe", AHE),
@@ -167,6 +172,7 @@ class BaseMethodEnhancementTests(unittest.TestCase):
         expected = cv2.merge(
             [cv2.equalizeHist(channel) for channel in cv2.split(bgr)]
         )
+        expected = cv2.cvtColor(expected, cv2.COLOR_BGR2RGB)
         np.testing.assert_array_equal(HE(color_space="rgb").enhance(image), expected)
 
     def test_grayscale_implementations_match_opencv(self):
@@ -209,6 +215,30 @@ class BaseMethodEnhancementTests(unittest.TestCase):
         output = HE()._enhance(image)
         self.assertEqual(output.dtype, np.uint8)
         np.testing.assert_array_equal(output, expected)
+
+    def test_all_algorithms_preserve_equivalent_input_range_semantics(self):
+        image = rgb_sample()
+        for algorithm in ALGORITHMS:
+            with self.subTest(algorithm=algorithm.__name__):
+                enhancer = algorithm()
+                uint8_output = enhancer.enhance(image)
+                float_byte_output = enhancer.enhance(
+                    image.astype(np.float32)
+                )
+                unit_output = enhancer.enhance(
+                    image.astype(np.float32) / 255.0
+                )
+
+                np.testing.assert_allclose(
+                    float_byte_output,
+                    uint8_output.astype(np.float32),
+                    atol=1e-6,
+                )
+                np.testing.assert_allclose(
+                    unit_output * 255.0,
+                    float_byte_output,
+                    atol=1e-5,
+                )
 
 
 if __name__ == "__main__":

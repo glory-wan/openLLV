@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import cv2
 import numpy as np
 import torch
 from PIL import Image
@@ -51,10 +50,10 @@ class ImageReaderTests(unittest.TestCase):
         self.assertEqual(InputType.TENSOR.value, "tensor")
         self.assertEqual(InputType.UNKNOWN.value, "unknown")
 
-    def test_numpy_rgb_input_produces_bgr_numpy_output(self):
+    def test_numpy_rgb_input_produces_rgb_numpy_output(self):
         output = ImageReader()(rgb_image(), output_format="numpy")
 
-        np.testing.assert_array_equal(output, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(output, rgb_image())
 
     def test_numpy_input_round_trips_to_rgb_pil(self):
         output = ImageReader()(rgb_image(), output_format=ImageFormat.PIL)
@@ -62,12 +61,12 @@ class ImageReaderTests(unittest.TestCase):
         self.assertIsInstance(output, Image.Image)
         np.testing.assert_array_equal(np.asarray(output), rgb_image())
 
-    def test_pil_input_produces_bgr_numpy_output(self):
+    def test_pil_input_produces_rgb_numpy_output(self):
         image = Image.fromarray(rgb_image(), mode="RGB")
 
         output = ImageReader()(image, output_format="numpy")
 
-        np.testing.assert_array_equal(output, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(output, rgb_image())
 
     def test_encoded_bytes_and_bytearray_are_supported(self):
         reader = ImageReader()
@@ -75,7 +74,7 @@ class ImageReaderTests(unittest.TestCase):
         for payload in (png_bytes(), bytearray(png_bytes())):
             with self.subTest(payload_type=type(payload).__name__):
                 output = reader(payload, output_format="numpy")
-                np.testing.assert_array_equal(output, rgb_image()[:, :, ::-1])
+                np.testing.assert_array_equal(output, rgb_image())
                 self.assertEqual(reader.input_type, InputType.BYTES)
                 self.assertEqual(reader.ext, "png")
 
@@ -89,7 +88,7 @@ class ImageReaderTests(unittest.TestCase):
             output_format="numpy",
         )
 
-        np.testing.assert_array_equal(plain, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(plain, rgb_image())
         np.testing.assert_array_equal(data_uri, plain)
         self.assertEqual(reader.input_type, InputType.BASE64)
 
@@ -103,7 +102,7 @@ class ImageReaderTests(unittest.TestCase):
             self.assertEqual(reader.input_type, InputType.FILE_PATH)
             from_path = reader(path, output_format="numpy")
 
-        np.testing.assert_array_equal(from_string, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(from_string, rgb_image())
         np.testing.assert_array_equal(from_path, from_string)
 
     def test_file_url_input_uses_local_file_loader(self):
@@ -111,7 +110,7 @@ class ImageReaderTests(unittest.TestCase):
         with patch.object(reader, "_load_from_file", return_value=png_bytes()) as load_mock:
             output = reader("file:///temporary/sample.png", output_format="numpy")
 
-        np.testing.assert_array_equal(output, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(output, rgb_image())
         self.assertEqual(reader.input_type, InputType.URL)
         self.assertEqual(reader.ext, "png")
         load_mock.assert_called_once()
@@ -123,7 +122,7 @@ class ImageReaderTests(unittest.TestCase):
         chw = reader(tensor, output_format="numpy")
         batched = reader(tensor.unsqueeze(0), output_format="numpy")
 
-        np.testing.assert_array_equal(chw, rgb_image()[:, :, ::-1])
+        np.testing.assert_array_equal(chw, rgb_image())
         np.testing.assert_array_equal(batched, chw)
 
     def test_tensor_grayscale_and_rgba_inputs_are_supported(self):
@@ -135,7 +134,7 @@ class ImageReaderTests(unittest.TestCase):
         rgba_output = reader(rgba, output_format="numpy")
 
         np.testing.assert_array_equal(gray_output, np.array([[0, 255]], dtype=np.uint8))
-        np.testing.assert_array_equal(rgba_output, np.array([[[0, 0, 255]]], dtype=np.uint8))
+        np.testing.assert_array_equal(rgba_output, np.array([[[255, 0, 0]]], dtype=np.uint8))
 
     def test_tensor_rejects_multi_image_batch_and_invalid_rank(self):
         reader = ImageReader()
@@ -314,11 +313,11 @@ class ImageReaderTests(unittest.TestCase):
         )
         np.testing.assert_array_equal(
             ImageReader._normalize_numpy_input(rgb),
-            np.array([[[3, 2, 1]]], dtype=np.uint8),
+            rgb,
         )
         np.testing.assert_array_equal(
             ImageReader._normalize_numpy_input(rgba),
-            np.array([[[3, 2, 1]]], dtype=np.uint8),
+            rgb,
         )
 
     def test_uint8_and_color_helpers_cover_channel_variants(self):

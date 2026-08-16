@@ -12,6 +12,9 @@ from openLLV.tradition.algorithms.Dehazing import DarkChannel
 
 
 class DarkChannelMetadataTests(unittest.TestCase):
+    def test_algorithm_uses_byte_working_range(self):
+        self.assertEqual(DarkChannel.working_range, "byte")
+
     def test_required_paper_metadata_is_the_module_docstring(self):
         self.assertEqual(
             dcp_module.__doc__.strip(),
@@ -160,6 +163,30 @@ class DarkChannelComponentTests(unittest.TestCase):
 
 
 class DarkChannelExecutionTests(unittest.TestCase):
+    def test_algorithm_preserves_equivalent_input_range_semantics(self):
+        image = np.random.default_rng(5).integers(
+            0,
+            256,
+            size=(16, 16, 3),
+            dtype=np.uint8,
+        )
+        enhancer = DarkChannel(size=3, guided_radius=3)
+
+        uint8_output = enhancer.enhance(image)
+        float_byte_output = enhancer.enhance(image.astype(np.float32))
+        unit_output = enhancer.enhance(image.astype(np.float32) / 255.0)
+
+        np.testing.assert_allclose(
+            float_byte_output,
+            uint8_output.astype(np.float32),
+            atol=0.5,
+        )
+        np.testing.assert_allclose(
+            unit_output * 255.0,
+            float_byte_output,
+            atol=1e-4,
+        )
+
     def test_end_to_end_enhancement_preserves_shape_dtype_and_range(self):
         image = np.random.default_rng(7).integers(
             0,

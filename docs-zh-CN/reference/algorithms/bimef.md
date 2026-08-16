@@ -23,7 +23,7 @@ BIMEF 使用对比度、饱和度和良好曝光度权重，融合原图与自�
 
 ## Implementation Notes
 
-算法接受 BGR、灰度和 BGRA 数组，归一化至 `[0, 1]`，保留 alpha/通道布局并恢复源值域。`exposure_ratio=None` 时估计 `clip(target_mean / mean_luminance, 1, max_ratio)`。每个算法参数也可传给 `enhance()` 作为单次覆盖值；覆盖值会校验但不修改已存参数。工厂创建会过滤不支持的构造键并告警。
+公共三通道输入和 NumPy 输出使用 RGB；BGR/BGRA 仅是 `_enhance()` 的内部工作布局。算法内部也接受灰度图，归一化至 `[0, 1]`，保留 alpha/通道布局并恢复源值域。`exposure_ratio=None` 时估计 `clip(target_mean / mean_luminance, 1, max_ratio)`。每个算法参数也可传给 `enhance()` 作为单次覆盖值；覆盖值会校验但不修改已存参数。工厂创建会过滤不支持的构造键并告警。
 
 ## Parameters
 
@@ -38,7 +38,8 @@ BIMEF 使用对比度、饱和度和良好曝光度权重，融合原图与自�
 | `well_exposed_weight` | `float` | `1.0` | 良好曝光度指数。 | 必须 `>= 0`；可运行时覆盖。 |
 | `output_type` | `Literal["numpy", "pil", "bytes", "base64", "file"]` | `"numpy"` | 基类输出格式。 | 其他值抛 `ValueError`。 |
 | `keep_dtype` | `bool` | `True` | 将输出转回输入 dtype。 | 非 `bool` 抛 `TypeError`。 |
-| `clip_output` | `bool` | `True` | 裁剪到目标 dtype 有效范围。 | 非 `bool` 抛 `TypeError`。 |
+| `clip_output` | `bool` | `True` | 裁剪到解析后的输入值域。 | 非 `bool` 抛 `TypeError`。 |
+| `value_range` | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | 输入值域；自动区分通常的浮点 `[0,1]` 与 `[0,255]` 输入。 | 最大值 `<= 1` 的暗部字节值域浮点图须用 `"byte"`。自定义边界须有限且递增；图像值越界抛 `ValueError`。 |
 
 ## Usage Example
 
