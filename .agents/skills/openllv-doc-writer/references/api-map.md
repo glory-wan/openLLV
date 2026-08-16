@@ -57,7 +57,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 - `device`：`None` → CUDA 可用则 CUDA，否则 CPU。
 - `batch_size` / `num_workers`：目前仅为元数据（预留），目录推理仍逐图处理。
 - `predict_single(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：`model_kwargs` 转发给模型 `forward`（其中张量值自动搬到设备）；`**reader_kwargs` 转给 `ImageReader`（`ext`、`timeout`、`headers`、`verify_ssl`）。返回 `(PIL.Image, Path|None)`。
-- `predict_batch(input_dir, output_dir=None, *, progress_bar=True, transform=None, model_kwargs=None, **reader_kwargs)`：递归处理，保留相对子目录与源后缀，返回按路径排序的 `Path` 列表。
+- `predict_batch(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：递归处理并保留相对子目录。`output_name` 非 `None` 抛 `ValueError`；未指定 `output_ext` 时逐字符保留源文件名和后缀（含大小写），指定时为全部文件替换后缀并保留参数大小写。`save=True` 返回按源路径排序的 `Path` 列表；`save=False` 不创建输出文件/目录并返回同序 `PIL.Image` 列表。
 
 ### 传统后端 `Predictor`（`openLLV/tradition/predictor.py`）
 
@@ -68,7 +68,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 - `LLVEnhancer` 基类构造参数：`output_type="numpy"`、`keep_dtype=True`、`clip_output=True`、`value_range="auto"`。`value_range` 还接受 `"unit"`、`"byte"` 或两个有限递增数值组成的 tuple/list。
 - `value_range="auto"`：`uint8` 使用 `[0,255]`，其它整数使用 `[0, dtype.max]`；浮点最大值 `<= 1` 推断为 `[0,1]`，否则最大值 `<= 255` 推断为 `[0,255]`。自动模式拒绝负值和大于 `255` 的浮点值（可改用显式自定义值域）；非有限浮点值始终拒绝；最大值 `<= 1` 的字节值域浮点图须显式传 `"byte"`。
 - `predict_single(image, save_path=None, *, output_name=None, output_ext=None, save=True, **kwargs)`：返回 RGB `(numpy.ndarray, Path|None)`；OpenCV BGR 仅用于算法内部。
-- `predict_batch(input_dir, output_dir=None, *, progress_bar=True, **kwargs)`：返回 `Path` 列表。
+- `predict_batch(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, **kwargs)`：目录命名、后缀、保存和返回规则与深度后端一致；`save=False` 返回同序 RGB `numpy.ndarray` 列表。其余 `**kwargs` 只转发给增强算法。
 
 ## `train` 的 kwargs 路由
 

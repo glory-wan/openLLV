@@ -1,6 +1,6 @@
 # openLLV.predict()
 
-`openLLV.predict()` 使用注册模型、模型 checkpoint 或传统算法执行推理，返回增强图及其保存路径（目录输入时返回保存路径列表）。`openLLV.enhance()` 是其别名。
+`openLLV.predict()` 使用注册模型、模型 checkpoint 或传统算法执行推理。单图输入返回图像/路径二元组；目录输入返回保存路径，或在 `save=False` 时返回增强图。`openLLV.enhance()` 是其别名。
 
 ## Function Form
 
@@ -29,9 +29,9 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `batch_size` | `int` | `1` | 深度后端预留元数据；必须为正整数 |
 | `num_workers` | `int` | `0` | 深度后端数据加载器预留元数据；必须非负 |
 | `progress_bar` | `bool` | `True` | 目录输入时显示 tqdm 进度条（经 `**kwargs`） |
-| `output_name` | `Optional[str]` | `None` | 保存到目录时的输出文件名覆盖（经 `**kwargs`） |
-| `output_ext` | `Optional[str]` | `None` | 输出后缀覆盖，可带或不带前导点（经 `**kwargs`） |
-| `save` | `bool` | `True` | 是否保存预测结果；`False` 时返回的 `path` 为 `None`（经 `**kwargs`） |
+| `output_name` | `Optional[str]` | `None` | 单图文件名覆盖。保存到目录且为 `None` 时，保留推断出的源名称与后缀及其大小写。目录输入只允许 `None`；任何字符串均抛 `ValueError` |
+| `output_ext` | `Optional[str]` | `None` | 保存结果的后缀覆盖，可带或不带前导点。目录输入时，`None` 逐字符保留每个源后缀及其大小写；显式值替换全部后缀并保留参数中的大小写 |
+| `save` | `bool` | `True` | 是否保存结果。单图为 `False` 时返回 `path=None`；目录为 `False` 时不创建输出文件/目录，并返回增强图列表 |
 | `model_kwargs` | `Optional[Mapping[str, Any]]` | `None` | 转发给模型 `forward()` 的关键字参数；张量值自动搬到设备（深度后端，经 `**kwargs`） |
 | `ext` | `Optional[str]` | `None` | 编码 bytes/base64 输入时使用的源扩展名（经 `**kwargs`） |
 | `timeout` | `float` | `10` | 远程来源的 URL 超时（经 `**kwargs`） |
@@ -51,9 +51,11 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 - **单图**：`(image, saved_path)`。
   - 深度后端：`image` 为 `PIL.Image.Image`。
-- 传统后端：`image` 为 RGB `numpy.ndarray`。
+  - 传统后端：`image` 为 RGB `numpy.ndarray`。
   - `saved_path` 为 `Path`；`save=False` 时为 `None`。
-- **目录输入**：按源路径排序的 `Path` 列表；递归处理，保留相对子目录与源后缀。
+- **目录输入**按确定的源路径顺序返回，并保留相对子目录。
+  - `save=True`：返回保存后的 `Path` 列表。
+  - `save=False`：不创建输出文件或目录；深度后端返回 `PIL.Image.Image` 列表，传统后端返回 RGB `numpy.ndarray` 列表。
 
 ## Behavior Details
 
@@ -63,6 +65,13 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 - 属于 `_PREDICT_CALL_KWARGS` 的键（`progress_bar`、`output_name`、`output_ext`、`save`、`model_kwargs`、`ext`、`timeout`、`headers`、`verify_ssl`）为预测调用选项。
 - 其余键用于构造统一 `Predictor`，并继续转发给所选后端预测器。
+
+### 目录输出约定
+
+- `output_name=None` 且 `output_ext=None` 时，逐字符复用每个源相对路径：文件名、后缀及其字母大小写均不改变。
+- 显式 `output_ext` 只替换全部源后缀，并保留参数后缀的大小写；文件主名与相对子目录不变。
+- `output_name` 仅支持单图。目录输入传任何非 `None` 值都会抛 `ValueError`，不会继续转发给模型、读取器或算法。
+- `save=False` 按源路径顺序返回增强图且不执行任何文件系统写入；不会创建 `output`/`output_dir`。若同时传 `output_ext`，仅校验其合法性，不产生文件效果。
 
 ### 后端解析
 
@@ -115,7 +124,7 @@ Predictor(
 | `__call__` | `predictor(source, output=None, **kwargs)` | 已存在目录路由到 `predict_batch`；其它来源调用 `predict_single`。 |
 | `predict` | `predictor.predict(source, output=None, **kwargs)` | `__call__` 的别名。 |
 | `predict_single` | `predictor.predict_single(*args, **kwargs)` | 委托给后端。深度后端精确签名：`(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`；传统后端精确签名省略 `transform`/`model_kwargs`，其余 kwargs 转给 enhancer。 |
-| `predict_batch` | `predictor.predict_batch(*args, **kwargs)` | 委托给后端。深度后端精确签名：`(input_dir, output_dir=None, *, progress_bar=True, transform=None, model_kwargs=None, **reader_kwargs)`；传统后端精确签名：`(input_dir, output_dir=None, *, progress_bar=True, **kwargs)`。 |
+| `predict_batch` | `predictor.predict_batch(*args, **kwargs)` | 委托给后端。深度后端精确签名：`(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`；传统后端精确签名：`(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, **kwargs)`。 |
 | `get_params` | `predictor.get_params() -> Dict[str, Any]` | 返回 `{"backend": "deep" 或 "traditional", "predictor": <后端参数字典>}`。深度字典含模型、任务、设备、输出目录、batch 元数据、config；传统字典含方法、输出目录、enhancer 参数。 |
 
 类方法 `Predictor.list_available_models()`、`list_available_methods()`、`list_available()` 分别返回模型键、算法键或两个类别。
@@ -125,7 +134,7 @@ Predictor(
 | Exception | Condition |
 | --- | --- |
 | `TypeError` | `config` 类型非法；`LLVEnhancer` 实例走深度后端（或 `LLVModel` 走传统后端）；后端实例类型非法 |
-| `ValueError` | 选择器冲突（`target` 与 `model`/`method` 同传，或 `model` 与 `method` 同传）；注册名二义；后端无法解析；`batch_size` 非正；`num_workers` 为负；`output_ext` 为空 |
+| `ValueError` | 选择器冲突（`target` 与 `model`/`method` 同传，或 `model` 与 `method` 同传）；注册名二义；后端无法解析；`batch_size` 非正；`num_workers` 为负；`output_ext` 为空；目录输入传非 `None` 的 `output_name` |
 
 ## Examples
 
@@ -165,12 +174,23 @@ enhanced, _ = llv.predict(
 ```
 
 ```python
-# 目录输入 + 进度条
+# 目录输入：按指定大小写统一替换后缀
 saved_paths = llv.predict(
     "ZeroDCE",
     "images/",
     output="results/zero_dce",
+    output_ext=".PNG",
     progress_bar=True,
+)
+```
+
+```python
+# 目录输入且不写入文件系统
+images = llv.predict(
+    "Gamma",
+    "images/",
+    save=False,
+    progress_bar=False,
 )
 ```
 

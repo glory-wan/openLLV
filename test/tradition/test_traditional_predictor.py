@@ -177,7 +177,7 @@ class PredictorSingleImageTests(unittest.TestCase):
     def test_source_name_is_preserved_for_directory_and_explicit_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            source = root / "source.png"
+            source = root / "SoUrCe.PnG"
             save_rgb(source)
             predictor = Predictor(method="predictor-test")
 
@@ -193,7 +193,7 @@ class PredictorSingleImageTests(unittest.TestCase):
 
             self.assertEqual(
                 directory_saved,
-                root / "directory-output" / "source.png",
+                root / "directory-output" / "SoUrCe.PnG",
             )
             self.assertEqual(explicit_saved, explicit)
             self.assertTrue(directory_saved.is_file())
@@ -229,8 +229,8 @@ class PredictorBatchTests(unittest.TestCase):
             root = Path(temp_dir)
             input_dir = root / "inputs"
             output_dir = root / "outputs"
-            save_rgb(input_dir / "z.png")
-            save_rgb(input_dir / "nested" / "A.jpg")
+            save_rgb(input_dir / "z.PNG")
+            save_rgb(input_dir / "nested" / "A.JpG")
             (input_dir / "ignore.txt").write_text("not an image", encoding="utf-8")
 
             saved = Predictor(method="predictor-test").predict_batch(
@@ -241,12 +241,68 @@ class PredictorBatchTests(unittest.TestCase):
 
             self.assertEqual(
                 saved,
-                [output_dir / "nested" / "A.jpg", output_dir / "z.png"],
+                [output_dir / "nested" / "A.JpG", output_dir / "z.PNG"],
             )
             self.assertTrue(all(path.is_file() for path in saved))
             for path in saved:
                 with Image.open(path) as image:
                     self.assertEqual(image.size, (3, 2))
+
+    def test_batch_output_extension_replaces_every_suffix_with_requested_case(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "inputs"
+            output_dir = root / "outputs"
+            save_rgb(input_dir / "First.PNG")
+            save_rgb(input_dir / "nested" / "Second.JpG")
+
+            saved = Predictor(method="predictor-test").predict_batch(
+                input_dir,
+                output_dir=output_dir,
+                progress_bar=False,
+                output_ext=".BmP",
+            )
+
+            self.assertEqual(
+                saved,
+                [
+                    output_dir / "First.BmP",
+                    output_dir / "nested" / "Second.BmP",
+                ],
+            )
+            self.assertTrue(all(path.is_file() for path in saved))
+
+    def test_batch_save_false_returns_images_without_creating_outputs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "inputs"
+            output_dir = root / "outputs"
+            save_rgb(input_dir / "A.PNG")
+            save_rgb(input_dir / "B.JpG")
+
+            outputs = Predictor(method="predictor-test").predict_batch(
+                input_dir,
+                output_dir=output_dir,
+                progress_bar=False,
+                save=False,
+                output_ext="png",
+            )
+
+            self.assertEqual(len(outputs), 2)
+            self.assertTrue(all(isinstance(image, np.ndarray) for image in outputs))
+            self.assertFalse(output_dir.exists())
+
+    def test_batch_rejects_output_name_instead_of_leaking_it(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "inputs"
+            save_rgb(input_dir / "A.PNG")
+
+            with self.assertRaisesRegex(ValueError, "single-image"):
+                Predictor(method="predictor-test")(
+                    input_dir,
+                    output_name="renamed.png",
+                    progress_bar=False,
+                )
 
     def test_directory_call_routes_to_batch_predictor(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -265,13 +321,20 @@ class PredictorBatchTests(unittest.TestCase):
 
     def test_empty_directory_returns_empty_list(self):
         with tempfile.TemporaryDirectory() as temp_dir:
+            predictor = Predictor(method="predictor-test")
             self.assertEqual(
-                Predictor(method="predictor-test").predict_batch(
+                predictor.predict_batch(
                     temp_dir,
                     progress_bar=False,
                 ),
                 [],
             )
+            with self.assertRaisesRegex(ValueError, "must not be empty"):
+                predictor.predict_batch(
+                    temp_dir,
+                    progress_bar=False,
+                    output_ext="  ",
+                )
 
     def test_non_directory_batch_input_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:

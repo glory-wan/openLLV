@@ -1,6 +1,6 @@
 # openLLV.predict()
 
-`openLLV.predict()` runs inference with a registered model, a model checkpoint, or a traditional algorithm, and returns the enhanced image together with its saved path (or a list of saved paths for directory input). `openLLV.enhance()` is an alias.
+`openLLV.predict()` runs inference with a registered model, a model checkpoint, or a traditional algorithm. Single-image input returns an image/path pair; directory input returns saved paths or, with `save=False`, enhanced images. `openLLV.enhance()` is an alias.
 
 ## Function Form
 
@@ -29,9 +29,9 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `batch_size`     | `int`                                              | `1`                     | Deep-learning metadata reserved for future batched pipelines; must be a positive integer                                                                                     |
 | `num_workers`    | `int`                                              | `0`                     | Deep-learning metadata reserved for data-loader pipelines; must be non-negative                                                                                              |
 | `progress_bar`   | `bool`                                             | `True`                  | Show a tqdm progress bar for directory input (via `**kwargs`)                                                                                                                |
-| `output_name`    | `Optional[str]`                                    | `None`                  | Output filename override when saving to a directory (via `**kwargs`)                                                                                                         |
-| `output_ext`     | `Optional[str]`                                    | `None`                  | Output suffix override, with or without a leading dot (via `**kwargs`)                                                                                                       |
-| `save`           | `bool`                                             | `True`                  | Whether to save the prediction; `False` returns `path=None` (via `**kwargs`)                                                                                                 |
+| `output_name`    | `Optional[str]`                                    | `None`                  | Single-image filename override. `None` preserves the inferred source name and suffix, including case, when saving to a directory. Directory input requires `None`; any string raises `ValueError`                                         |
+| `output_ext`     | `Optional[str]`                                    | `None`                  | Saved-output suffix override, with or without a leading dot. For directory input, `None` preserves every source suffix exactly, including case; an explicit suffix replaces every suffix and preserves the supplied case                     |
+| `save`           | `bool`                                             | `True`                  | Save results. For one image, `False` returns `path=None`; for a directory, `False` creates no output files/directories and returns enhanced images                                                                                           |
 | `model_kwargs`   | `Optional[Mapping[str, Any]]`                      | `None`                  | Keyword arguments forwarded to the model `forward()`; tensor values are moved to the device automatically (deep backend, via `**kwargs`)                                     |
 | `ext`            | `Optional[str]`                                    | `None`                  | Source extension used when encoding byte/base64 inputs (via `**kwargs`)                                                                                                      |
 | `timeout`        | `float`                                            | `10`                    | URL timeout for remote sources (via `**kwargs`)                                                                                                                              |
@@ -51,9 +51,11 @@ Registered names are matched case-insensitively (and punctuation-insensitively f
 
 - **Single image**: `(image, saved_path)`.
   - Deep backend: `image` is a `PIL.Image.Image`.
-- Traditional backend: `image` is a RGB `numpy.ndarray`.
+  - Traditional backend: `image` is a RGB `numpy.ndarray`.
   - `saved_path` is a `Path`, or `None` when `save=False`.
-- **Directory input**: a list of saved `Path` objects in deterministic (sorted) source-path order. Relative subdirectories and source suffixes are preserved.
+- **Directory input** follows deterministic source-path order and preserves relative subdirectories.
+  - `save=True`: returns saved `Path` objects.
+  - `save=False`: creates no output files or directories and returns `PIL.Image.Image` objects for the deep backend or RGB `numpy.ndarray` objects for the traditional backend.
 
 ## Behavior Details
 
@@ -63,6 +65,13 @@ Registered names are matched case-insensitively (and punctuation-insensitively f
 
 - Keys in `_PREDICT_CALL_KWARGS` (`progress_bar`, `output_name`, `output_ext`, `save`, `model_kwargs`, `ext`, `timeout`, `headers`, `verify_ssl`) are prediction-call options.
 - All other keys construct the unified `Predictor`, which forwards them to the selected backend predictor.
+
+### Directory output contract
+
+- With `output_name=None` and `output_ext=None`, every relative source path is reused exactly: the filename, suffix, and their letter case are unchanged.
+- An explicit `output_ext` replaces every source suffix while preserving the supplied suffix case; it does not rename stems or relative directories.
+- `output_name` is single-image-only. Passing any non-`None` value for directory input raises `ValueError` instead of forwarding it to a model, reader, or algorithm.
+- `save=False` returns enhanced images in source-path order and performs no filesystem writes. `output`/`output_dir` is not created; `output_ext`, if supplied, is validated but has no output-file effect.
 
 ### Backend resolution
 
@@ -115,7 +124,7 @@ The unified object exposes these public methods and delegates to the selected ba
 | `__call__` | `predictor(source, output=None, **kwargs)` | Routes an existing directory to `predict_batch`; otherwise calls `predict_single`. |
 | `predict` | `predictor.predict(source, output=None, **kwargs)` | Alias of `__call__`. |
 | `predict_single` | `predictor.predict_single(*args, **kwargs)` | Delegates to the backend. Deep exact backend signature: `(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`. Traditional exact backend signature omits `transform`/`model_kwargs` and forwards remaining kwargs to the enhancer. |
-| `predict_batch` | `predictor.predict_batch(*args, **kwargs)` | Delegates to the backend. Deep exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, transform=None, model_kwargs=None, **reader_kwargs)`. Traditional exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, **kwargs)`. |
+| `predict_batch` | `predictor.predict_batch(*args, **kwargs)` | Delegates to the backend. Deep exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`. Traditional exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, **kwargs)`. |
 | `get_params` | `predictor.get_params() -> Dict[str, Any]` | Returns `{"backend": "deep" or "traditional", "predictor": <backend parameter dictionary>}`. The deep dictionary contains model, task, device, output directory, batch metadata, and config; the traditional dictionary contains method, output directory, and enhancer parameters. |
 
 Class methods `Predictor.list_available_models()`, `list_available_methods()`, and `list_available()` return model keys, algorithm keys, or both categories respectively.
@@ -125,7 +134,7 @@ Class methods `Predictor.list_available_models()`, `list_available_methods()`, a
 | Exception    | Condition                                                                                                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `TypeError`  | Invalid `config` type; `LLVEnhancer` passed with deep backend (or `LLVModel` with traditional); invalid backend-instance type                                                                                |
-| `ValueError` | Conflicting selectors (`target` with `model`/`method`, or both `model` and `method`); ambiguous registered name; unresolvable backend; `batch_size` not positive; `num_workers` negative; empty `output_ext` |
+| `ValueError` | Conflicting selectors (`target` with `model`/`method`, or both `model` and `method`); ambiguous registered name; unresolvable backend; `batch_size` not positive; `num_workers` negative; empty `output_ext`; non-`None` `output_name` with directory input |
 
 ## Examples
 
@@ -165,12 +174,23 @@ enhanced, _ = llv.predict(
 ```
 
 ```python
-# Directory input with progress bar
+# Directory input: replace every suffix with the requested case
 saved_paths = llv.predict(
     "ZeroDCE",
     "images/",
     output="results/zero_dce",
+    output_ext=".PNG",
     progress_bar=True,
+)
+```
+
+```python
+# Directory input without filesystem output
+images = llv.predict(
+    "Gamma",
+    "images/",
+    save=False,
+    progress_bar=False,
 )
 ```
 

@@ -27,7 +27,7 @@ enhanced_image, saved_path = openLLV.predict(...)
 
 深度学习后端返回 RGB PIL 图像，传统算法后端返回 RGB NumPy 数组。`saved_path` 为 `Path`；当 `save=False` 时为 `None`。
 
-对于目录输入，预测器会递归处理支持的图像，并按确定的顺序返回已保存的 `Path` 列表。相对目录结构和源文件扩展名都会保留。
+对于目录输入，预测器会按确定的源路径顺序递归处理支持的图像，并保留相对目录结构。`save=True` 时返回已保存的 `Path` 列表；`save=False` 时不创建输出文件或目录，并返回增强后的 PIL 图像列表（深度后端）或 RGB NumPy 数组列表（传统后端）。
 
 ## 传统算法
 
@@ -103,7 +103,19 @@ saved_paths = llv.predict(
     "ZeroDCE",
     "images/",
     output="results/zero_dce",
+    output_ext=".PNG",
     progress_bar=True,
+)
+```
+
+未指定 `output_ext` 时，每个源文件名和扩展名都会逐字符保留，包括字母大小写。显式 `output_ext` 会替换全部后缀并保留参数中的大小写。`output_name` 仅支持单图，目录输入使用它会抛 `ValueError`。
+
+```python
+images = llv.predict(
+    "Gamma",
+    "images/",
+    save=False,
+    progress_bar=False,
 )
 ```
 

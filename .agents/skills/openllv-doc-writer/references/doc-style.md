@@ -58,7 +58,7 @@
 ## 返回契约写法
 
 - 单图：`(image, path)`，其中 `image` 深度后端为 `PIL.Image.Image`、传统后端为 `numpy.ndarray`；`save=False` 时 `path` 为 `None`。
-- 目录：返回按路径排序的 `Path` 列表；递归处理；保留相对子目录与源后缀。
+- 目录：`save=True` 返回按源路径排序的 `Path` 列表；`save=False` 返回按相同顺序排列的增强图列表且不创建输出文件/目录。递归处理并保留相对子目录；未指定 `output_ext` 时逐字符保留源文件名与后缀（含大小写），指定时只替换后缀；目录传 `output_name` 抛 `ValueError`。
 - 异常：`TypeError` / `ValueError` / `FileNotFoundError` / `NotADirectoryError` 各自触发条件。
 
 ## 示例代码要求

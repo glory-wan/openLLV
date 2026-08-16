@@ -69,6 +69,7 @@ class TopLevelExportTests(unittest.TestCase):
                 "config": {"width": 8},
                 "gamma": 0.8,
                 "save": False,
+                "output_name": "renamed.png",
                 "output_ext": "png",
                 "model_kwargs": {"temperature": 0.5},
                 "timeout": 2,
@@ -87,6 +88,7 @@ class TopLevelExportTests(unittest.TestCase):
             call_kwargs,
             {
                 "save": False,
+                "output_name": "renamed.png",
                 "output_ext": "png",
                 "model_kwargs": {"temperature": 0.5},
                 "timeout": 2,
@@ -132,6 +134,43 @@ class PredictionAPITests(unittest.TestCase):
             output="output.png",
             save=False,
         )
+
+    def test_directory_runtime_options_follow_the_public_contract(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "inputs"
+            input_dir.mkdir()
+            Image.fromarray(sample_image()).save(input_dir / "MiXeD.PNG")
+
+            unsaved = llv.predict(
+                "gamma",
+                input_dir,
+                output=root / "unused-output",
+                gamma=1.0,
+                save=False,
+                progress_bar=False,
+            )
+            self.assertEqual(len(unsaved), 1)
+            self.assertIsInstance(unsaved[0], np.ndarray)
+            self.assertFalse((root / "unused-output").exists())
+
+            saved = llv.predict(
+                "api-identity",
+                input_dir,
+                output=root / "saved-output",
+                device="cpu",
+                output_ext=".BmP",
+                progress_bar=False,
+            )
+            self.assertEqual(saved, [root / "saved-output" / "MiXeD.BmP"])
+
+            with self.assertRaisesRegex(ValueError, "single-image"):
+                llv.predict(
+                    "gamma",
+                    input_dir,
+                    output_name="renamed.png",
+                    progress_bar=False,
+                )
 
 
 class TrainingAndEvaluationAPITests(unittest.TestCase):

@@ -137,8 +137,9 @@ class Predictor:
                 :meth:`predict_batch`.
 
         Returns:
-            ``(PIL.Image, saved_path)`` for a single image, or a list of saved
-            paths for a directory.
+            ``(PIL.Image, saved_path)`` for a single image. Directory input
+            returns saved paths when ``save=True`` and PIL images when
+            ``save=False``.
         """
         log_info_env(self.device)
         if self._is_directory_source(source):
@@ -209,34 +210,58 @@ class Predictor:
         output_dir: Optional[Union[str, Path]] = None,
         *,
         progress_bar: bool = True,
+        output_name: Optional[str] = None,
+        output_ext: Optional[str] = None,
+        save: bool = True,
         transform: Optional[Any] = None,
         model_kwargs: Optional[Mapping[str, Any]] = None,
         **reader_kwargs: Any,
-    ) -> List[Path]:
+    ) -> Union[List[Path], List[Image.Image]]:
         """Run inference recursively for all supported images in a directory.
 
-        Relative subdirectories and source filename suffixes are preserved.
+        Relative subdirectories and source filenames are preserved exactly
+        when ``output_ext`` is omitted, including extension letter case.
 
         Args:
             input_dir: Source image directory.
             output_dir: Optional output root directory.
             progress_bar: Whether to display a tqdm progress bar.
+            output_name: Unsupported for directory prediction. Pass ``None``
+                to preserve each source filename.
+            output_ext: Optional suffix applied to every saved output. When
+                omitted, each source suffix is preserved exactly.
+            save: Whether to save predictions. If ``False``, no output files
+                or directories are created.
             transform: Optional per-call transform override.
             model_kwargs: Optional keyword arguments forwarded to each model
                 call.
             **reader_kwargs: Additional ``ImageReader`` arguments.
 
         Returns:
-            Saved output paths in deterministic source-path order.
+            Saved output paths when ``save`` is ``True``; otherwise enhanced
+            PIL images. Both lists follow deterministic source-path order.
 
         Raises:
             NotADirectoryError: If ``input_dir`` is not a directory.
+            ValueError: If ``output_name`` is supplied or ``output_ext`` is
+                empty.
         """
         input_dir = Path(input_dir)
         if not input_dir.is_dir():
             raise NotADirectoryError(
                 f"input_dir must be a directory, got {input_dir}."
             )
+
+        if output_name is not None:
+            raise ValueError(
+                "output_name is only supported for single-image prediction."
+            )
+
+        suffix = (
+            self._normalize_suffix(output_ext)
+            if output_ext is not None
+            else None
+        )
 
         image_files = self._list_images(input_dir)
         if not image_files:
@@ -246,6 +271,7 @@ class Predictor:
             Path(output_dir) if output_dir is not None else self.output_dir
         )
         saved_paths: List[Path] = []
+        output_images: List[Image.Image] = []
         iterator = (
             tqdm(image_files, desc=f"Predicting with {self.model_name}")
             if progress_bar
@@ -253,22 +279,30 @@ class Predictor:
         )
 
         for image_path in iterator:
-            target_path = output_root / image_path.relative_to(input_dir)
-            _, saved_path = self.predict_single(
+            target_path = None
+            if save:
+                relative_path = image_path.relative_to(input_dir)
+                if suffix is not None:
+                    relative_path = relative_path.with_suffix(suffix)
+                target_path = output_root / relative_path
+
+            output_image, saved_path = self.predict_single(
                 image_path,
                 save_path=target_path,
-                save=True,
+                save=save,
                 transform=transform,
                 model_kwargs=model_kwargs,
                 **reader_kwargs,
             )
-            if saved_path is not None:
+            if save and saved_path is not None:
                 saved_paths.append(saved_path)
+            elif not save:
+                output_images.append(output_image)
 
             if progress_bar:
                 iterator.set_postfix({"current": image_path.name})
 
-        return saved_paths
+        return saved_paths if save else output_images
 
     def get_params(self) -> Dict[str, Any]:
         """Return predictor runtime parameters and model configuration."""

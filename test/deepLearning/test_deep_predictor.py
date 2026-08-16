@@ -357,6 +357,18 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
 
         self.assertEqual(saved, output_dir / "renamed.png")
 
+    def test_single_default_name_and_extension_preserve_source_case(self):
+        predictor = Predictor(PredictorIdentityModel(), device="cpu")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = write_image(root / "SoUrCe.JpG", 90)
+            output_dir = root / "outputs"
+            _, saved = predictor.predict_single(source, save_path=output_dir)
+
+            self.assertEqual(saved, output_dir / "SoUrCe.JpG")
+            self.assertTrue(saved.is_file())
+
     def test_output_extension_overrides_explicit_file_suffix(self):
         predictor = Predictor(PredictorIdentityModel(), device="cpu")
 
@@ -388,8 +400,8 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
             root = Path(temp_dir)
             input_dir = root / "input"
             output_dir = root / "output"
-            write_image(input_dir / "a.png", 10)
-            write_image(input_dir / "nested" / "b.jpg", 20)
+            write_image(input_dir / "Z.PNG", 10)
+            write_image(input_dir / "nested" / "A.JpG", 20)
             (input_dir / "ignored.txt").write_text("ignored", encoding="utf-8")
 
             saved = predictor.predict_batch(
@@ -400,9 +412,71 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
 
             self.assertEqual(
                 saved,
-                [output_dir / "a.png", output_dir / "nested" / "b.jpg"],
+                [output_dir / "nested" / "A.JpG", output_dir / "Z.PNG"],
             )
             self.assertTrue(all(path.exists() for path in saved))
+
+    def test_batch_output_extension_replaces_every_suffix_with_requested_case(self):
+        predictor = Predictor(PredictorIdentityModel(), device="cpu")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "input"
+            output_dir = root / "output"
+            write_image(input_dir / "First.PNG", 10)
+            write_image(input_dir / "nested" / "Second.JpG", 20)
+
+            saved = predictor.predict_batch(
+                input_dir,
+                output_dir,
+                progress_bar=False,
+                output_ext=".BmP",
+            )
+
+            self.assertEqual(
+                saved,
+                [
+                    output_dir / "First.BmP",
+                    output_dir / "nested" / "Second.BmP",
+                ],
+            )
+            self.assertTrue(all(path.is_file() for path in saved))
+
+    def test_batch_save_false_returns_images_without_creating_outputs(self):
+        predictor = Predictor(PredictorIdentityModel(), device="cpu")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "input"
+            output_dir = root / "output"
+            write_image(input_dir / "A.PNG", 10)
+            write_image(input_dir / "B.JpG", 20)
+
+            outputs = predictor.predict_batch(
+                input_dir,
+                output_dir,
+                progress_bar=False,
+                save=False,
+                output_ext="png",
+            )
+
+            self.assertEqual(len(outputs), 2)
+            self.assertTrue(all(isinstance(image, Image.Image) for image in outputs))
+            self.assertFalse(output_dir.exists())
+
+    def test_batch_rejects_output_name_instead_of_leaking_it(self):
+        predictor = Predictor(PredictorIdentityModel(), device="cpu")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            write_image(input_dir / "A.PNG")
+
+            with self.assertRaisesRegex(ValueError, "single-image"):
+                predictor(
+                    input_dir,
+                    output_name="renamed.png",
+                    progress_bar=False,
+                )
 
     def test_call_routes_directory_and_progress_bar_is_supported(self):
         predictor = Predictor(PredictorIdentityModel(), device="cpu")
@@ -426,6 +500,12 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
                 predictor.predict_batch(temp_dir, progress_bar=False),
                 [],
             )
+            with self.assertRaisesRegex(ValueError, "must not be empty"):
+                predictor.predict_batch(
+                    temp_dir,
+                    progress_bar=False,
+                    output_ext="  ",
+                )
             with self.assertRaisesRegex(NotADirectoryError, "must be a directory"):
                 predictor.predict_batch(
                     Path(temp_dir) / "missing",

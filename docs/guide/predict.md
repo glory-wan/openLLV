@@ -27,7 +27,7 @@ enhanced_image, saved_path = openLLV.predict(...)
 
 The deep backend returns an RGB PIL image; the traditional backend returns an RGB NumPy array. `saved_path` is a `Path`, or `None` when `save=False`.
 
-For a directory, prediction recursively processes supported images and returns a deterministic list of saved `Path` objects. Relative subdirectories and source suffixes are preserved.
+For a directory, prediction recursively processes supported images in deterministic source-path order and preserves relative subdirectories. With `save=True`, it returns saved `Path` objects. With `save=False`, it creates no output files or directories and returns enhanced PIL images (deep backend) or RGB NumPy arrays (traditional backend).
 
 ## Traditional Algorithm
 
@@ -103,7 +103,19 @@ saved_paths = llv.predict(
     "ZeroDCE",
     "images/",
     output="results/zero_dce",
+    output_ext=".PNG",
     progress_bar=True,
+)
+```
+
+When `output_ext` is omitted, each source filename and extension is preserved exactly, including letter case. An explicit `output_ext` replaces every suffix and preserves the supplied case. `output_name` is single-image-only and raises `ValueError` for directory input.
+
+```python
+images = llv.predict(
+    "Gamma",
+    "images/",
+    save=False,
+    progress_bar=False,
 )
 ```
 

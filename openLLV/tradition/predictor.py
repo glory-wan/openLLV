@@ -64,8 +64,9 @@ class Predictor:
             **kwargs: Additional keyword arguments forwarded to the enhancer.
 
         Returns:
-            ``(enhanced_image, saved_path)`` for a single image, or a list of
-            saved paths for a directory input.
+            ``(enhanced_image, saved_path)`` for a single image. Directory
+            input returns saved paths when ``save=True`` and enhanced RGB
+            arrays when ``save=False``.
         """
         if self._is_directory_source(source):
             return self.predict_batch(source, output_dir=output, **kwargs)
@@ -140,29 +141,53 @@ class Predictor:
         output_dir: Optional[Union[str, Path]] = None,
         *,
         progress_bar: bool = True,
+        output_name: Optional[str] = None,
+        output_ext: Optional[str] = None,
+        save: bool = True,
         **kwargs: Any,
-    ) -> List[Path]:
+    ) -> Union[List[Path], List[np.ndarray]]:
         """Enhance all image files under ``input_dir`` recursively.
 
-        Output filenames and suffixes are kept identical to the source images.
-        Relative subdirectories are preserved to avoid filename collisions.
+        Relative subdirectories and source filenames are preserved exactly
+        when ``output_ext`` is omitted, including extension letter case.
 
         Args:
             input_dir: Directory containing input images.
             output_dir: Optional directory where enhanced images are saved.
             progress_bar: Whether to display a tqdm progress bar.
+            output_name: Unsupported for directory prediction. Pass ``None``
+                to preserve each source filename.
+            output_ext: Optional suffix applied to every saved output. When
+                omitted, each source suffix is preserved exactly.
+            save: Whether to save predictions. If ``False``, no output files
+                or directories are created.
             **kwargs: Additional keyword arguments forwarded to the enhancer.
 
         Returns:
-            List of saved image paths.
+            Saved output paths when ``save`` is ``True``; otherwise enhanced
+            RGB NumPy arrays. Both lists follow deterministic source-path
+            order.
 
         Raises:
             NotADirectoryError: If ``input_dir`` is not a directory.
             TypeError: If the enhancer does not return a NumPy array.
+            ValueError: If ``output_name`` is supplied or ``output_ext`` is
+                empty.
         """
         input_dir = Path(input_dir)
         if not input_dir.is_dir():
             raise NotADirectoryError(f"input_dir must be a directory, got {input_dir}.")
+
+        if output_name is not None:
+            raise ValueError(
+                "output_name is only supported for single-image prediction."
+            )
+
+        suffix = (
+            self._normalize_suffix(output_ext)
+            if output_ext is not None
+            else None
+        )
 
         image_files = self._list_images(input_dir)
         if not image_files:
@@ -170,11 +195,13 @@ class Predictor:
 
         output_root = Path(output_dir) if output_dir is not None else self.output_dir
         saved_paths: List[Path] = []
+        output_images: List[np.ndarray] = []
         iterator = tqdm(image_files, desc=f"Enhancing with {self.method_name}") if progress_bar else image_files
 
         for image_path in iterator:
             relative_path = image_path.relative_to(input_dir)
-            target_path = output_root / relative_path
+            if suffix is not None:
+                relative_path = relative_path.with_suffix(suffix)
             enhanced = self.enhancer(str(image_path), **kwargs)
 
             if not isinstance(enhanced, np.ndarray):
@@ -182,13 +209,17 @@ class Predictor:
                     f"Traditional predictor expects numpy output from enhancer, got {type(enhanced)!r}."
                 )
 
-            self._save_numpy_image(enhanced, target_path)
-            saved_paths.append(target_path)
+            if save:
+                target_path = output_root / relative_path
+                self._save_numpy_image(enhanced, target_path)
+                saved_paths.append(target_path)
+            else:
+                output_images.append(enhanced)
 
             if progress_bar:
                 iterator.set_postfix({"current": image_path.name})
 
-        return saved_paths
+        return saved_paths if save else output_images
 
     def get_params(self) -> Dict[str, Any]:
         """Get predictor and enhancer parameters.
