@@ -10,6 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import torch
 from PIL import Image
+from torch.utils.data import DataLoader as TorchDataLoader
 
 import openLLV.deepLearning as deep_learning
 from openLLV.deepLearning.models import LLVModel, ZeroDCE
@@ -30,8 +31,10 @@ class PredictorIdentityModel(LLVModel):
     def _init_model(self):
         self.scale = torch.nn.Parameter(torch.tensor(1.0))
         self.last_kwargs = None
+        self.forward_batch_sizes = []
 
     def forward(self, x, offset=None, nested=None, **kwargs):
+        self.forward_batch_sizes.append(x.shape[0])
         self.last_kwargs = {"offset": offset, "nested": nested, **kwargs}
         prediction = x * self.scale
         if offset is not None:
@@ -73,10 +76,10 @@ def sample_rgb(value=128, size=(8, 6)):
     return np.full((size[1], size[0], 3), value, dtype=np.uint8)
 
 
-def write_image(path, value=128):
+def write_image(path, value=128, size=(8, 6)):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(sample_rgb(value=value)).save(path)
+    Image.fromarray(sample_rgb(value=value, size=size)).save(path)
     return path
 
 
@@ -136,6 +139,22 @@ class PredictorInitializationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "num_workers"):
             Predictor(PredictorIdentityModel(), num_workers=-1, device="cpu")
 
+        for resize, error_type in (
+            (True, TypeError),
+            (0, ValueError),
+            ((4,), ValueError),
+            ((4, 0), ValueError),
+            ((4, 5.5), TypeError),
+            ("4", TypeError),
+        ):
+            with self.subTest(resize=resize):
+                with self.assertRaises(error_type):
+                    Predictor(
+                        PredictorIdentityModel(),
+                        resize=resize,
+                        device="cpu",
+                    )
+
     def test_unknown_model_and_missing_checkpoint_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "not registered"):
             Predictor("missing-model", device="cpu")
@@ -175,6 +194,7 @@ class PredictorInitializationTests(unittest.TestCase):
         self.assertEqual(params["task"], "predictor-test")
         self.assertEqual(params["device"], "cpu")
         self.assertEqual(params["output_dir"], "outputs")
+        self.assertIsNone(params["resize"])
         self.assertEqual(params["batch_size"], 2)
         self.assertEqual(params["num_workers"], 3)
         self.assertEqual(params["config"]["marker"], "value")
@@ -463,6 +483,156 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
             self.assertEqual(len(outputs), 2)
             self.assertTrue(all(isinstance(image, Image.Image) for image in outputs))
             self.assertFalse(output_dir.exists())
+
+    def test_batch_groups_full_same_size_batches_and_runs_remainders_singly(self):
+        model = PredictorIdentityModel()
+        predictor = Predictor(model, device="cpu", batch_size=3)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            for index in range(4):
+                write_image(input_dir / f"A{index}.png", index, size=(8, 6))
+            for index in range(2):
+                write_image(input_dir / f"B{index}.png", index, size=(11, 7))
+
+            outputs = predictor.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+
+        self.assertEqual(len(outputs), 6)
+        self.assertEqual(model.forward_batch_sizes, [3, 1, 1, 1])
+
+    def test_batched_outputs_match_single_image_inference_exactly(self):
+        batched = Predictor(
+            PredictorIdentityModel(),
+            device="cpu",
+            batch_size=3,
+        )
+        single = Predictor(
+            PredictorIdentityModel(),
+            device="cpu",
+            batch_size=1,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            for index, value in enumerate((15, 75, 135)):
+                write_image(input_dir / f"{index}.png", value, size=(9, 7))
+
+            batch_outputs = batched.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+            single_outputs = single.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+
+        for batch_output, single_output in zip(batch_outputs, single_outputs):
+            np.testing.assert_array_equal(
+                np.asarray(batch_output),
+                np.asarray(single_output),
+            )
+
+    def test_default_batch_prediction_preserves_each_original_size(self):
+        predictor = Predictor(
+            PredictorIdentityModel(),
+            device="cpu",
+            batch_size=2,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            write_image(input_dir / "A.png", size=(13, 7))
+            write_image(input_dir / "B.png", size=(9, 5))
+
+            outputs = predictor.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+
+        self.assertEqual([image.size for image in outputs], [(13, 7), (9, 5)])
+
+    def test_explicit_resize_batches_different_source_sizes(self):
+        model = PredictorIdentityModel()
+        predictor = Predictor(
+            model,
+            device="cpu",
+            resize=(5, 11),
+            batch_size=2,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            write_image(input_dir / "A.png", size=(13, 7))
+            write_image(input_dir / "B.png", size=(9, 5))
+
+            outputs = predictor.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+
+        self.assertEqual([image.size for image in outputs], [(11, 5), (11, 5)])
+        self.assertEqual(model.forward_batch_sizes, [2])
+        self.assertEqual(predictor.get_params()["resize"], (5, 11))
+
+    def test_batch_forwards_num_workers_to_data_loader(self):
+        observed = {}
+
+        def build_loader(*args, **kwargs):
+            observed["num_workers"] = kwargs["num_workers"]
+            kwargs["num_workers"] = 0
+            return TorchDataLoader(*args, **kwargs)
+
+        predictor = Predictor(
+            PredictorIdentityModel(),
+            device="cpu",
+            num_workers=2,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            write_image(input_dir / "A.png")
+
+            with patch(
+                "openLLV.deepLearning.predictor.DataLoader",
+                side_effect=build_loader,
+            ):
+                predictor.predict_batch(
+                    input_dir,
+                    progress_bar=False,
+                    save=False,
+                )
+
+        self.assertEqual(observed["num_workers"], 2)
+
+    def test_batch_can_load_images_in_a_worker_process(self):
+        model = PredictorIdentityModel()
+        predictor = Predictor(
+            model,
+            device="cpu",
+            batch_size=2,
+            num_workers=1,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "input"
+            write_image(input_dir / "A.png", 32)
+            write_image(input_dir / "B.png", 96)
+
+            outputs = predictor.predict_batch(
+                input_dir,
+                progress_bar=False,
+                save=False,
+            )
+
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(model.forward_batch_sizes, [2])
 
     def test_batch_rejects_output_name_instead_of_leaking_it(self):
         predictor = Predictor(PredictorIdentityModel(), device="cpu")

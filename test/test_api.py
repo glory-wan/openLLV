@@ -67,6 +67,7 @@ class TopLevelExportTests(unittest.TestCase):
             {
                 "device": "cpu",
                 "config": {"width": 8},
+                "resize": (4, 5),
                 "gamma": 0.8,
                 "save": False,
                 "output_name": "renamed.png",
@@ -81,6 +82,7 @@ class TopLevelExportTests(unittest.TestCase):
             {
                 "device": "cpu",
                 "config": {"width": 8},
+                "resize": (4, 5),
                 "gamma": 0.8,
             },
         )
@@ -108,13 +110,23 @@ class PredictionAPITests(unittest.TestCase):
             "api-identity",
             sample_image(),
             device="cpu",
+            resize=(4, 5),
             save=False,
         )
 
         self.assertIsInstance(traditional_output, np.ndarray)
         self.assertIsNone(traditional_path)
         self.assertIsInstance(deep_output, Image.Image)
+        self.assertEqual(deep_output.size, (5, 4))
         self.assertIsNone(deep_path)
+
+        with self.assertRaisesRegex(ValueError, "deep-learning"):
+            llv.predict(
+                "gamma",
+                sample_image(),
+                resize=4,
+                save=False,
+            )
 
     def test_enhance_delegates_to_predict(self):
         expected = object()

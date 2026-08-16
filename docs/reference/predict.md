@@ -26,8 +26,9 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `value_range`    | `"auto" \| "unit" \| "byte" \| Tuple[float, float] \| List[float]` | `"auto"` | Traditional algorithms only: input value-range interpretation. Auto infers ordinary float `[0,1]` or `[0,255]`; explicit/custom ranges are validated                                      |
 | `device`         | `Optional[Any]`                                    | `None`                  | Device for the deep-learning backend; `None` → CUDA if available, else CPU                                                                                                   |
 | `transform`      | `Optional[Any]`                                    | `None`                  | Input transform for the deep-learning backend (callable or torchvision v2 transform list)                                                                                    |
-| `batch_size`     | `int`                                              | `1`                     | Deep-learning metadata reserved for future batched pipelines; must be a positive integer                                                                                     |
-| `num_workers`    | `int`                                              | `0`                     | Deep-learning metadata reserved for data-loader pipelines; must be non-negative                                                                                              |
+| `resize`         | `Optional[Union[int, Tuple[int, int], List[int]]]`  | `None`                  | Deep backend only. `None` performs no scaling; a positive integer makes a square input; a pair specifies `(height, width)`. Resizing runs before `transform`                 |
+| `batch_size`     | `int`                                              | `1`                     | Deep directory prediction: number of same-size images in one model call. Only complete groups are batched; must be positive                                                  |
+| `num_workers`    | `int`                                              | `0`                     | Deep directory prediction: DataLoader workers for image reading and CPU preprocessing; must be non-negative                                                                  |
 | `progress_bar`   | `bool`                                             | `True`                  | Show a tqdm progress bar for directory input (via `**kwargs`)                                                                                                                |
 | `output_name`    | `Optional[str]`                                    | `None`                  | Single-image filename override. `None` preserves the inferred source name and suffix, including case, when saving to a directory. Directory input requires `None`; any string raises `ValueError`                                         |
 | `output_ext`     | `Optional[str]`                                    | `None`                  | Saved-output suffix override, with or without a leading dot. For directory input, `None` preserves every source suffix exactly, including case; an explicit suffix replaces every suffix and preserves the supplied case                     |
@@ -88,6 +89,9 @@ Backend aliases: deep = `deep`/`deeplearning`/`deep_learning`/`dl`/`model`; trad
 
 - `device` is owned by the predictor, never stored by `LLVModel`.
 - `config` and remaining `**kwargs` are merged into the model configuration.
+- `resize=None` uses the default PIL-to-float-tensor transform without resizing. Single-image and directory prediction therefore preserve each source input's original height and width unless the user explicitly supplies `resize` or a size-changing custom `transform`.
+- Directory inputs are grouped by source size, or by the explicit target size when `resize` is set. A group is sent to one model call only when it contains exactly `batch_size` compatible tensors. Remainders and shape-incompatible transformed tensors run as single-image calls. No padding is applied, so default batched preprocessing is the same as per-image preprocessing.
+- `num_workers` controls DataLoader reading/preprocessing workers; model inference remains in the predictor process. On spawn-based platforms, a custom `transform` used with `num_workers > 0` must be picklable.
 - Checkpoints created by the openLLV trainer carry model class, configuration, and state dictionary; raw upstream `.pth` state dictionaries do not and must be loaded manually.
 
 ### Traditional-algorithm specifics
@@ -109,6 +113,7 @@ Predictor(
     config=None,
     device=None,
     transform=None,
+    resize=None,
     batch_size=1,
     num_workers=0,
     **kwargs,
@@ -125,7 +130,7 @@ The unified object exposes these public methods and delegates to the selected ba
 | `predict` | `predictor.predict(source, output=None, **kwargs)` | Alias of `__call__`. |
 | `predict_single` | `predictor.predict_single(*args, **kwargs)` | Delegates to the backend. Deep exact backend signature: `(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`. Traditional exact backend signature omits `transform`/`model_kwargs` and forwards remaining kwargs to the enhancer. |
 | `predict_batch` | `predictor.predict_batch(*args, **kwargs)` | Delegates to the backend. Deep exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`. Traditional exact backend signature: `(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, **kwargs)`. |
-| `get_params` | `predictor.get_params() -> Dict[str, Any]` | Returns `{"backend": "deep" or "traditional", "predictor": <backend parameter dictionary>}`. The deep dictionary contains model, task, device, output directory, batch metadata, and config; the traditional dictionary contains method, output directory, and enhancer parameters. |
+| `get_params` | `predictor.get_params() -> Dict[str, Any]` | Returns `{"backend": "deep" or "traditional", "predictor": <backend parameter dictionary>}`. The deep dictionary contains model, task, device, output directory, normalized resize, active batch settings, and config; the traditional dictionary contains method, output directory, and enhancer parameters. |
 
 Class methods `Predictor.list_available_models()`, `list_available_methods()`, and `list_available()` return model keys, algorithm keys, or both categories respectively.
 
@@ -133,8 +138,8 @@ Class methods `Predictor.list_available_models()`, `list_available_methods()`, a
 
 | Exception    | Condition                                                                                                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `TypeError`  | Invalid `config` type; `LLVEnhancer` passed with deep backend (or `LLVModel` with traditional); invalid backend-instance type                                                                                |
-| `ValueError` | Conflicting selectors (`target` with `model`/`method`, or both `model` and `method`); ambiguous registered name; unresolvable backend; `batch_size` not positive; `num_workers` negative; empty `output_ext`; non-`None` `output_name` with directory input |
+| `TypeError`  | Invalid `config` type; invalid `resize` type/items; `LLVEnhancer` passed with deep backend (or `LLVModel` with traditional); invalid backend-instance type                                                |
+| `ValueError` | Conflicting selectors; ambiguous/unresolvable backend; `resize` non-positive or not length two; non-`None` `resize` with the traditional backend; `batch_size` not positive; `num_workers` negative; empty `output_ext`; non-`None` `output_name` with directory input |
 
 ## Examples
 
@@ -179,10 +184,14 @@ saved_paths = llv.predict(
     "ZeroDCE",
     "images/",
     output="results/zero_dce",
+    batch_size=4,
+    num_workers=2,
     output_ext=".PNG",
     progress_bar=True,
 )
 ```
+
+Same-size images use complete batches of four. Images left over in a size group run one at a time. Omit `resize` to keep every source size exactly; set `resize=(384, 512)` only when uniform rescaling is intended.
 
 ```python
 # Directory input without filesystem output

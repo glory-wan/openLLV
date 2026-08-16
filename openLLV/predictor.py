@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .deepLearning.models import LLVModel
 from .deepLearning.predictor import Predictor as DeepLearningPredictor
@@ -53,6 +53,7 @@ class Predictor:
         config: Optional[Dict[str, Any]] = None,
         device: Optional[Any] = None,
         transform: Optional[Any] = None,
+        resize: Optional[Union[int, Tuple[int, int], List[int]]] = None,
         batch_size: int = 1,
         num_workers: int = 0,
         **kwargs: Any,
@@ -70,6 +71,8 @@ class Predictor:
             config: Model or algorithm configuration.
             device: Device used by the deep-learning predictor.
             transform: Input transform used by the deep-learning predictor.
+            resize: Optional deep-learning input resize in ``(height, width)``
+                order. ``None`` preserves source dimensions.
             batch_size: Deep-learning batch prediction size.
             num_workers: Deep-learning data-loader worker count.
             **kwargs: Model configuration overrides for the deep backend, or
@@ -106,10 +109,15 @@ class Predictor:
                 config=model_config or None,
                 device=device,
                 transform=transform,
+                resize=resize,
                 batch_size=batch_size,
                 num_workers=num_workers,
             )
         else:
+            if resize is not None:
+                raise ValueError(
+                    "resize is only supported by the deep-learning backend."
+                )
             method_input = self._resolve_method_input(
                 target=target,
                 model=model,

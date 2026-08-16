@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import urllib.parse
+from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 import numpy as np
 import torch
 import torchvision
 from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Sampler
 
 if hasattr(torchvision, "disable_beta_transforms_warning"):
     torchvision.disable_beta_transforms_warning()
@@ -33,8 +35,124 @@ ImageInput = Union[
     torch.Tensor,
 ]
 ModelInput = Union[str, Path, LLVModel]
+ResizeInput = Optional[Union[int, Tuple[int, int], List[int]]]
 
-__all__ = ["Predictor", "ImageInput", "ModelInput"]
+__all__ = ["Predictor", "ImageInput", "ModelInput", "ResizeInput"]
+
+
+def _prepare_image_tensor(
+    image: Image.Image,
+    transform: Any,
+    resize_size: Optional[Tuple[int, int]],
+) -> torch.Tensor:
+    """Apply optional resizing and return one transformed ``[C,H,W]`` tensor."""
+    if resize_size is not None:
+        image = v2.functional.resize(image, resize_size, antialias=True)
+
+    tensor = transform(image)
+    if not torch.is_tensor(tensor):
+        raise TypeError(
+            f"transform must return a torch.Tensor, got {type(tensor)!r}."
+        )
+    if tensor.ndim == 4:
+        if tensor.shape[0] != 1:
+            raise ValueError(
+                "Single-image prediction requires transform batch size 1, "
+                f"got {tensor.shape[0]}."
+            )
+        tensor = tensor[0]
+    if tensor.ndim != 3:
+        raise ValueError(
+            "Expected transformed image shape [C,H,W] or [N,C,H,W], "
+            f"got {tuple(tensor.shape)}."
+        )
+    return tensor
+
+
+class _DirectoryPredictionDataset(Dataset):
+    """Load and transform directory images in DataLoader workers."""
+
+    def __init__(
+        self,
+        image_files: List[Path],
+        transform: Any,
+        resize_size: Optional[Tuple[int, int]],
+        reader_kwargs: Mapping[str, Any],
+    ) -> None:
+        self.image_files = image_files
+        self.transform = transform
+        self.resize_size = resize_size
+        self.reader_kwargs = dict(reader_kwargs)
+
+    def __len__(self) -> int:
+        return len(self.image_files)
+
+    def __getitem__(self, index: int) -> Tuple[int, Path, torch.Tensor]:
+        image_path = self.image_files[index]
+        try:
+            image = ImageReader()(
+                image_path,
+                output_format="pil",
+                **self.reader_kwargs,
+            )
+            tensor = _prepare_image_tensor(
+                image,
+                self.transform,
+                self.resize_size,
+            )
+        except Exception as error:
+            raise RuntimeError(
+                f"Failed to prepare directory prediction image: {image_path}"
+            ) from error
+        return index, image_path, tensor
+
+
+class _SizeGroupedBatchSampler(Sampler[List[int]]):
+    """Yield full same-size batches and singleton remainder batches."""
+
+    def __init__(
+        self,
+        image_files: List[Path],
+        batch_size: int,
+        resize_size: Optional[Tuple[int, int]],
+    ) -> None:
+        self.batch_size = batch_size
+        groups: "OrderedDict[Tuple[int, int], List[int]]" = OrderedDict()
+
+        for index, image_path in enumerate(image_files):
+            if resize_size is not None:
+                size_key = resize_size
+            else:
+                try:
+                    with Image.open(image_path) as image:
+                        width, height = image.size
+                except Exception as error:
+                    raise RuntimeError(
+                        f"Failed to inspect directory prediction image: {image_path}"
+                    ) from error
+                size_key = (height, width)
+            groups.setdefault(size_key, []).append(index)
+
+        self.batches: List[List[int]] = []
+        for indices in groups.values():
+            full_batch_end = len(indices) - (len(indices) % batch_size)
+            for start in range(0, full_batch_end, batch_size):
+                self.batches.append(indices[start : start + batch_size])
+            self.batches.extend(
+                [index]
+                for index in indices[full_batch_end:]
+            )
+
+    def __iter__(self) -> Iterable[List[int]]:
+        return iter(self.batches)
+
+    def __len__(self) -> int:
+        return len(self.batches)
+
+
+def _return_samples_as_list(samples: List[Any]) -> List[Any]:
+    """Keep variable-shaped samples unstacked until the predictor validates them."""
+    return samples
 
 
 class Predictor:
@@ -75,6 +193,7 @@ class Predictor:
         config: Optional[Dict[str, Any]] = None,
         device: Optional[Union[str, torch.device]] = None,
         transform: Optional[Any] = None,
+        resize: ResizeInput = None,
         batch_size: int = 1,
         num_workers: int = 0,
     ) -> None:
@@ -90,14 +209,18 @@ class Predictor:
             device: Runtime device. CUDA is selected automatically when
                 available; otherwise CPU is used.
             transform: Optional callable or list of torchvision v2 transforms.
-            batch_size: Predictor metadata reserved for batched data pipelines.
-                Directory inference remains size-safe and processes one image
-                at a time because source images may have different shapes.
-            num_workers: Predictor metadata reserved for data-loader pipelines.
+            resize: Optional input size. A positive integer produces a square;
+                a two-item tuple/list is interpreted as ``(height, width)``.
+                ``None`` preserves every source image's original dimensions.
+            batch_size: Number of same-size directory images per model call.
+                Incomplete groups fall back to single-image calls.
+            num_workers: DataLoader workers used for directory image reading and
+                preprocessing.
 
         Raises:
-            ValueError: If ``batch_size`` is not positive or ``num_workers`` is
-                negative.
+            TypeError: If ``resize`` has an unsupported type or element type.
+            ValueError: If ``resize`` is invalid, ``batch_size`` is not
+                positive, or ``num_workers`` is negative.
         """
         if not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size must be a positive integer.")
@@ -118,6 +241,7 @@ class Predictor:
             else Path("results") / self.model_name
         )
         self.transform = self._build_transform(transform)
+        self.resize_size = self._normalize_resize_size(resize)
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.image_reader = ImageReader()
@@ -221,6 +345,9 @@ class Predictor:
 
         Relative subdirectories and source filenames are preserved exactly
         when ``output_ext`` is omitted, including extension letter case.
+        Images are grouped by input size. Only complete groups of
+        ``self.batch_size`` are stacked; incomplete groups run one image at a
+        time. No padding is applied.
 
         Args:
             input_dir: Source image directory.
@@ -270,39 +397,85 @@ class Predictor:
         output_root = (
             Path(output_dir) if output_dir is not None else self.output_dir
         )
-        saved_paths: List[Path] = []
-        output_images: List[Image.Image] = []
+        saved_paths: List[Optional[Path]] = [None] * len(image_files)
+        output_images: List[Optional[Image.Image]] = [None] * len(image_files)
+        transformer = (
+            self._build_transform(transform)
+            if transform is not None
+            else self.transform
+        )
+        dataset = _DirectoryPredictionDataset(
+            image_files=image_files,
+            transform=transformer,
+            resize_size=self.resize_size,
+            reader_kwargs=reader_kwargs,
+        )
+        batch_sampler = _SizeGroupedBatchSampler(
+            image_files=image_files,
+            batch_size=self.batch_size,
+            resize_size=self.resize_size,
+        )
+        data_loader = DataLoader(
+            dataset,
+            batch_sampler=batch_sampler,
+            num_workers=self.num_workers,
+            collate_fn=_return_samples_as_list,
+        )
         iterator = (
-            tqdm(image_files, desc=f"Predicting with {self.model_name}")
+            tqdm(data_loader, desc=f"Predicting with {self.model_name}")
             if progress_bar
-            else image_files
+            else data_loader
         )
 
-        for image_path in iterator:
-            target_path = None
-            if save:
-                relative_path = image_path.relative_to(input_dir)
-                if suffix is not None:
-                    relative_path = relative_path.with_suffix(suffix)
-                target_path = output_root / relative_path
+        for samples in iterator:
+            sample_predictions: List[Tuple[Any, torch.Tensor]] = []
+            same_shape = len({tuple(sample[2].shape) for sample in samples}) == 1
+            if (
+                self.batch_size > 1
+                and len(samples) == self.batch_size
+                and same_shape
+            ):
+                batch_tensor = torch.stack(
+                    [sample[2] for sample in samples],
+                    dim=0,
+                ).to(self.device)
+                prediction = self._predict_tensor(
+                    batch_tensor,
+                    model_kwargs=model_kwargs,
+                )
+                predictions = self._split_batch_prediction(
+                    prediction,
+                    expected_batch_size=len(samples),
+                )
+                sample_predictions.extend(zip(samples, predictions))
+            else:
+                for sample in samples:
+                    prediction = self._predict_tensor(
+                        sample[2].unsqueeze(0).to(self.device),
+                        model_kwargs=model_kwargs,
+                    )
+                    sample_predictions.append((sample, prediction))
 
-            output_image, saved_path = self.predict_single(
-                image_path,
-                save_path=target_path,
-                save=save,
-                transform=transform,
-                model_kwargs=model_kwargs,
-                **reader_kwargs,
-            )
-            if save and saved_path is not None:
-                saved_paths.append(saved_path)
-            elif not save:
-                output_images.append(output_image)
+            for sample, prediction in sample_predictions:
+                index, image_path, _ = sample
+                output_image = self._tensor_to_pil(prediction)
+                if save:
+                    relative_path = image_path.relative_to(input_dir)
+                    if suffix is not None:
+                        relative_path = relative_path.with_suffix(suffix)
+                    target_path = output_root / relative_path
+                    self._save_pil_image(output_image, target_path)
+                    saved_paths[index] = target_path
+                else:
+                    output_images[index] = output_image
 
             if progress_bar:
-                iterator.set_postfix({"current": image_path.name})
+                iterator.set_postfix({"current": samples[-1][1].name})
 
-        return saved_paths if save else output_images
+        results = saved_paths if save else output_images
+        if any(result is None for result in results):
+            raise RuntimeError("Directory prediction did not produce every output.")
+        return [result for result in results if result is not None]
 
     def get_params(self) -> Dict[str, Any]:
         """Return predictor runtime parameters and model configuration."""
@@ -311,6 +484,7 @@ class Predictor:
             "task": getattr(self.model, "task", None),
             "device": str(self.device),
             "output_dir": str(self.output_dir),
+            "resize": self.resize_size,
             "batch_size": self.batch_size,
             "num_workers": self.num_workers,
             "config": dict(getattr(self.model, "config", {})),
@@ -408,24 +582,12 @@ class Predictor:
             if transform is not None
             else self.transform
         )
-        tensor = transformer(pil_image)
-        if not torch.is_tensor(tensor):
-            raise TypeError(
-                f"transform must return a torch.Tensor, got {type(tensor)!r}."
-            )
-        if tensor.ndim == 3:
-            tensor = tensor.unsqueeze(0)
-        if tensor.ndim != 4:
-            raise ValueError(
-                "Expected transformed image shape [C,H,W] or [N,C,H,W], "
-                f"got {tuple(tensor.shape)}."
-            )
-        if tensor.shape[0] != 1:
-            raise ValueError(
-                "Single-image prediction requires transform batch size 1, "
-                f"got {tensor.shape[0]}."
-            )
-        return tensor.to(self.device)
+        tensor = _prepare_image_tensor(
+            pil_image,
+            transformer,
+            self.resize_size,
+        )
+        return tensor.unsqueeze(0).to(self.device)
 
     def _predict_tensor(
         self,
@@ -456,6 +618,24 @@ class Predictor:
                 f"got {type(prediction)!r}."
             )
         return prediction
+
+    @staticmethod
+    def _split_batch_prediction(
+        prediction: torch.Tensor,
+        expected_batch_size: int,
+    ) -> List[torch.Tensor]:
+        """Validate and split a model prediction along its batch dimension."""
+        if prediction.ndim != 4:
+            raise ValueError(
+                "Batched directory prediction requires model output shape "
+                f"[N,C,H,W], got {tuple(prediction.shape)}."
+            )
+        if prediction.shape[0] != expected_batch_size:
+            raise ValueError(
+                "Model output batch size must match the input batch size: "
+                f"expected {expected_batch_size}, got {prediction.shape[0]}."
+            )
+        return list(prediction.unbind(dim=0))
 
     def _move_to_device(self, value: Any) -> Any:
         """Move tensor values in nested model arguments to the runtime device."""
@@ -524,6 +704,39 @@ class Predictor:
         raise TypeError(
             "transform must be callable, a list of callables, or None, "
             f"got {type(transform)!r}."
+        )
+
+    @staticmethod
+    def _normalize_resize_size(
+        resize: ResizeInput,
+    ) -> Optional[Tuple[int, int]]:
+        """Normalize a resize value to ``(height, width)``."""
+        if resize is None:
+            return None
+        if isinstance(resize, bool):
+            raise TypeError("resize cannot be bool.")
+        if isinstance(resize, int):
+            if resize <= 0:
+                raise ValueError("resize must be greater than 0.")
+            return resize, resize
+        if isinstance(resize, (tuple, list)):
+            if len(resize) != 2:
+                raise ValueError("resize must contain exactly (height, width).")
+            height, width = resize
+            if (
+                isinstance(height, bool)
+                or isinstance(width, bool)
+                or not isinstance(height, int)
+                or not isinstance(width, int)
+            ):
+                raise TypeError("resize height and width must be integers.")
+            if height <= 0 or width <= 0:
+                raise ValueError(
+                    "resize height and width must be greater than 0."
+                )
+            return height, width
+        raise TypeError(
+            "resize must be None, a positive integer, or a (height, width) pair."
         )
 
     @classmethod

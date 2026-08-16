@@ -119,7 +119,22 @@ images = llv.predict(
 )
 ```
 
-目录推理会逐张处理图像，以安全支持不同尺寸的输入。深度学习预测器的 `batch_size` 和 `num_workers` 当前是为未来批处理流水线保留的元数据。
+深度目录预测会按源图尺寸分组。每个包含 `batch_size` 个兼容张量的完整组只执行一次模型调用；不足完整批次的图像逐张运行。流水线不会对图像做 padding。`num_workers` 控制并行图像读取和 CPU 预处理，不控制模型推理。
+
+默认 `resize=None`，不会进行任何缩放，并保持每张源图的原始尺寸。需要主动缩放时，可以传正整数作为正方形尺寸，或显式传入 `(height, width)`：
+
+```python
+images = llv.predict(
+    "ZeroDCE",
+    "images/",
+    save=False,
+    resize=(384, 512),
+    batch_size=4,
+    num_workers=2,
+)
+```
+
+缩放会在自定义 `transform` 之前执行。在使用 spawn 的平台上，`num_workers > 0` 时该变换必须可序列化。
 
 ## 统一 Predictor 对象
 

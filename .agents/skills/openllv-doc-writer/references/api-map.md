@@ -37,7 +37,7 @@
 
 ```python
 Predictor(target=None, *, model=None, method=None, backend="auto",
-          output_dir=None, config=None, device=None, transform=None,
+          output_dir=None, config=None, device=None, transform=None, resize=None,
           batch_size=1, num_workers=0, **kwargs)
 ```
 
@@ -45,17 +45,20 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 - `model` / `method`：显式选择器，与 `target` 互斥（同时传抛 `ValueError`）。
 - `backend`：`"auto"` 或深度别名（`deep`/`deeplearning`/`deep_learning`/`dl`/`model`）或传统别名（`tradition`/`traditional`/`traditionalalgorithm`/`traditional_algorithm`/`ta`/`method`/`algorithm`）；大小写与空白不敏感。`auto` 推断规则：`.pt`/`.pth` → 深度；注册名同时存在于两个注册表 → 抛 `ValueError` 要求显式 `backend`。
 - `output_dir`：默认输出目录（单图未给 `output` 时用 `output_dir/<源文件名>`；目录输入时作为输出根目录）。
+- `resize`：仅深度后端；`None` 不缩放，正整数为正方形，二元 tuple/list 按 `(height, width)`。传统后端收到非 `None` 值时抛 `ValueError`。
 - 其余 `**kwargs` 行为随后端而异（见下）。
 - `Predictor.__call__(source, output=None, **kwargs)` / `predict` 同签名；`predict_single` / `predict_batch` 原样转发给后端。
 
 ### 深度后端 `Predictor`（`openLLV/deepLearning/predictor.py`）
 
-构造器：`Predictor(model, output_dir=None, config=None, device=None, transform=None, batch_size=1, num_workers=0)`。
+构造器：`Predictor(model, output_dir=None, config=None, device=None, transform=None, resize=None, batch_size=1, num_workers=0)`。
 
 - `model`：注册名 / checkpoint（`.pt`/`.pth`）/ `LLVModel` 实例。
 - `config`：模型配置覆盖；对 checkpoint 会覆盖保存的配置。
 - `device`：`None` → CUDA 可用则 CUDA，否则 CPU。
-- `batch_size` / `num_workers`：目前仅为元数据（预留），目录推理仍逐图处理。
+- `resize=None`：默认预处理只将 PIL 图像转换为浮点张量，不缩放；正整数产生正方形输入，二元 tuple/list 按 `(height, width)`，并在自定义 `transform` 前执行。
+- `batch_size`：目录输入按源尺寸分组（设置 `resize` 时按目标尺寸分组），只有完整的同尺寸组进行一次模型前向；余数及变换后尺寸不兼容的样本逐图前向，不做 padding。
+- `num_workers`：实际传给 DataLoader，用于目录图像读取和 CPU 预处理；模型推理仍在主预测器进程。
 - `predict_single(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：`model_kwargs` 转发给模型 `forward`（其中张量值自动搬到设备）；`**reader_kwargs` 转给 `ImageReader`（`ext`、`timeout`、`headers`、`verify_ssl`）。返回 `(PIL.Image, Path|None)`。
 - `predict_batch(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：递归处理并保留相对子目录。`output_name` 非 `None` 抛 `ValueError`；未指定 `output_ext` 时逐字符保留源文件名和后缀（含大小写），指定时为全部文件替换后缀并保留参数大小写。`save=True` 返回按源路径排序的 `Path` 列表；`save=False` 不创建输出文件/目录并返回同序 `PIL.Image` 列表。
 

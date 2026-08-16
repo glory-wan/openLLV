@@ -74,13 +74,21 @@ def _add_predict_parser(subparsers: argparse._SubParsersAction) -> None:
         "--batch-size",
         type=int,
         default=1,
-        help="Batch-size metadata used by the deep predictor.",
+        help="Same-size images per deep-model forward pass.",
     )
     parser.add_argument(
         "--num-workers",
         type=int,
         default=0,
-        help="Data-loader worker metadata used by the deep predictor.",
+        help="DataLoader workers for deep directory prediction.",
+    )
+    parser.add_argument(
+        "--resize",
+        type=int,
+        nargs="+",
+        default=None,
+        metavar="SIZE",
+        help="Deep input size: one square size or HEIGHT WIDTH.",
     )
     parser.add_argument(
         "--no-progress",
@@ -90,7 +98,7 @@ def _add_predict_parser(subparsers: argparse._SubParsersAction) -> None:
     parser.add_argument(
         "--no-save",
         action="store_true",
-        help="Do not save a single-image prediction.",
+        help="Do not save prediction outputs.",
     )
     parser.add_argument(
         "--output-name",
@@ -234,6 +242,11 @@ def _cmd_predict(args: argparse.Namespace) -> Any:
                 "backend": args.backend,
                 "device": args.device,
                 "output_dir": args.output_dir,
+                "resize": (
+                    args.resize[0]
+                    if args.resize is not None and len(args.resize) == 1
+                    else args.resize
+                ),
                 "batch_size": args.batch_size,
                 "num_workers": args.num_workers,
                 "progress_bar": not args.no_progress,

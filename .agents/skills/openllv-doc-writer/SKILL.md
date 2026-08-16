@@ -55,7 +55,7 @@ description: 为 openLLV 项目编写"给 AI 看的"单功能文档（原子级�
 
 1. **显式参数**：从源码签名读取每个参数的名字、默认值、类型注解。注意 `*`（keyword-only）、`*args` 的存在。
 2. **`**kwargs` 路由追踪**：找到 kwargs 被转交的下一层，逐层展开，直到消费点（构造器、`forward`、`_enhance`、`create_metric` 等），记录每一层支持的键。
-   - 例：`openLLV.predict(**kwargs)` 在 `api.py` 用 `_PREDICT_CALL_KWARGS` 拆分：`progress_bar`、`output_name`、`output_ext`、`save`、`model_kwargs`、`ext`、`timeout`、`headers`、`verify_ssl` 归调用参数；其余进 `Predictor` 构造器（`backend`、`output_dir`、`config`、`device`、`transform`、`batch_size`、`num_workers` 等），再继续转交组件构造器。
+   - 例：`openLLV.predict(**kwargs)` 在 `api.py` 用 `_PREDICT_CALL_KWARGS` 拆分：`progress_bar`、`output_name`、`output_ext`、`save`、`model_kwargs`、`ext`、`timeout`、`headers`、`verify_ssl` 归调用参数；其余进 `Predictor` 构造器（`backend`、`output_dir`、`config`、`device`、`transform`、`resize`、`batch_size`、`num_workers` 等），再继续转交组件构造器。
    - 例：`openLLV.train(**kwargs)` 由 `Trainer._kwargs_to_config` 的 `flat_map` 决定支持哪些平铺键，未知键抛 `TypeError`。
 3. **组件参数**：模型/算法组件的参数 = 其构造器的显式参数 + 基类构造器参数（`LLVEnhancer` 的 `output_type`、`keep_dtype`、`clip_output`、`value_range`；`LLVModel` 的 `config`）+ `_init_model()` 实际读取的 config 键。
 4. **校验规则提取**：阅读构造器内验证代码，记录约束。例：CLAHE 的 `clip_limit` 必须是大于 0 的有限数；`tile_grid_size` 必须含两个正整数。约束必须写进参数表。

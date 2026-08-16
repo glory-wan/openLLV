@@ -119,7 +119,22 @@ images = llv.predict(
 )
 ```
 
-Directory inference runs one image at a time so differently sized inputs remain safe. The deep predictor's `batch_size` and `num_workers` values are currently metadata reserved for future batched pipelines.
+Deep directory inference groups images by source size. Every complete group of `batch_size` compatible tensors uses one model call; incomplete groups run one image at a time. The pipeline never pads images. `num_workers` controls parallel image reading and CPU preprocessing, not model inference.
+
+By default, `resize=None` applies no scaling and preserves every source image's original dimensions. To opt into resizing, pass a positive square size or an explicit `(height, width)` pair:
+
+```python
+images = llv.predict(
+    "ZeroDCE",
+    "images/",
+    save=False,
+    resize=(384, 512),
+    batch_size=4,
+    num_workers=2,
+)
+```
+
+Resizing happens before a custom `transform`. With `num_workers > 0` on a spawn-based platform, that transform must be picklable.
 
 ## Unified Predictor Object
 

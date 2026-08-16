@@ -43,10 +43,10 @@ python -m openLLV.cli predict ZeroDCE input.jpg -o results/zero_dce.png --device
 Directory input:
 
 ```bash
-python -m openLLV.cli predict ZeroDCE images -o results/zero_dce --no-progress
+python -m openLLV.cli predict ZeroDCE images -o results/zero_dce --batch-size 4 --num-workers 2 --no-progress
 ```
 
-Important options include `--backend`, `--device`, `--output-dir`, `--no-save`, `--output-name`, and `--output-ext`.
+Important options include `--backend`, `--device`, `--output-dir`, `--batch-size`, `--num-workers`, `--resize`, `--no-save`, `--output-name`, and `--output-ext`. `--resize SIZE` selects a square input; `--resize HEIGHT WIDTH` selects an explicit size. Omitting it performs no scaling.
 
 ## Train
 
@@ -111,4 +111,3 @@ python -m openLLV.cli predict --help
 python -m openLLV.cli train --help
 python -m openLLV.cli evaluate --help
 ```
-
