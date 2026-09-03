@@ -23,7 +23,7 @@ Gamma performs channel-wise power-law correction after normalizing the image to 
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB; the base class performs the internal BGR round trip around `_enhance()`. The base resolves the semantic input range, maps it to Gamma's `[0,1]` floating working range, and restores the same source range and dtype afterward. Thus float `[0,1]` and float `[0,255]` inputs retain their respective output conventions. A `gamma` passed to `enhance()` overrides the stored value for that call without mutation. Values below `1` brighten the image. Factory creation ignores unsupported constructor keys with `UserWarning`.
+Public three-channel input and NumPy output use RGB; the base class performs the internal BGR round trip around `_enhance()`. The base resolves the semantic input range, maps it to Gamma's `[0,1]` floating working range, and restores the same source range and dtype afterward. Thus float `[0,1]` and float `[0,255]` inputs retain their respective output conventions. A `gamma` passed to `enhance()` overrides the stored value for that call without mutation. Values below `1` brighten the image. Factory creation ignores unsupported constructor keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 

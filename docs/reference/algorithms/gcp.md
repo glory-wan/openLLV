@@ -23,7 +23,7 @@ GCP implements Gamma Correction Prior enhancement using adaptive gamma, atmosphe
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB; GCP uses BGR/BGRA only inside `_enhance()`. It converts grayscale and BGRA working input to three channels, preserves grayscale/alpha layout, and restores the source range. Each call starts with stored parameters, applies every runtime keyword as an override, then validates the combined mapping. Therefore unknown runtime keys are retained but not read after validation; known overrides do not mutate the instance. Factory construction filters unsupported keys and warns.
+Public three-channel input and NumPy output use RGB; GCP uses BGR/BGRA only inside `_enhance()`. It converts grayscale and BGRA working input to three channels, preserves grayscale/alpha layout, and restores the source range. Each call starts with stored parameters, applies every runtime keyword as an override, then validates the combined mapping. Therefore unknown runtime keys are retained but not read after validation; known overrides do not mutate the instance. Factory construction ignores unsupported keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 

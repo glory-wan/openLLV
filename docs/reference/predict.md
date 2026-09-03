@@ -38,7 +38,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `timeout`        | `float`                                            | `10`                    | URL timeout for remote sources (via `**kwargs`)                                                                                                                              |
 | `headers`        | `Dict[str, str]`                                   | default User-Agent dict | HTTP headers for remote sources (via `**kwargs`)                                                                                                                             |
 | `verify_ssl`     | `bool`                                             | `True`                  | SSL verification for remote sources (via `**kwargs`)                                                                                                                         |
-| other `**kwargs` | —                                                  | —                       | Deep backend: model configuration overrides (merged into `config`). Traditional backend: algorithm constructor parameters; unsupported parameters are ignored with a warning |
+| other `**kwargs` | —                                                  | —                       | Deep backend: model configuration overrides (merged into `config`). Traditional backend: algorithm constructor parameters; unsupported parameters are ignored after a console message explains that they are unused and cannot affect computation, with a spelling suggestion when available |
 
 ### Aliases
 
@@ -96,7 +96,7 @@ Backend aliases: deep = `deep`/`deeplearning`/`deep_learning`/`dl`/`model`; trad
 
 ### Traditional-algorithm specifics
 
-- `config` and remaining `**kwargs` are passed to `LLVEnhancer.create_enhancer()`; parameters unsupported by the selected algorithm are ignored with a `UserWarning`.
+- `config` and remaining `**kwargs` are passed to `LLVEnhancer.create_enhancer()`. For every parameter unsupported by the selected algorithm, the factory prints a console diagnostic stating that the parameter is unused and cannot affect the algorithm's computation. A close spelling match adds a `Did you mean ...?` suggestion.
 - Per-image overrides can also be passed to `Predictor.predict_single()`.
 - `value_range="auto"` preserves ordinary float `[0,1]` and `[0,255]` conventions. Use `"byte"` for an ambiguous byte-range float image whose maximum is `<= 1`. Negative or float values above `255` require an explicit valid custom range; non-finite inputs are always rejected.
 

@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
+from openLLV.data.image_io import ImageReader
+
 from .algorithms import ImageInput, LLVEnhancer
 
 __all__ = ["Predictor"]
@@ -21,10 +23,7 @@ class Predictor:
     input is also supported and will process all image files recursively.
     """
 
-    SUPPORTED_EXTENSIONS = {
-        ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif",
-        ".webp", ".gif", ".ppm", ".pgm", ".pbm", ".sr", ".ras",
-    }
+    SUPPORTED_EXTENSIONS = ImageReader.SUPPORTED_EXTENSIONS
 
     def __init__(
         self,

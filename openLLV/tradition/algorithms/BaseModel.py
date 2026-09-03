@@ -1,11 +1,11 @@
 """Base class and registry utilities for traditional enhancement algorithms."""
 
 from abc import ABC, abstractmethod
+from difflib import get_close_matches
 import inspect
 from pathlib import Path
 import sys
 from typing import Any, Dict, List, Literal, Optional, Tuple, Type, Union
-import warnings
 
 import cv2
 import numpy as np
@@ -141,7 +141,7 @@ class LLVEnhancer(ABC):
             enhancer_name: Registered enhancer name, class name, or alias.
             **kwargs: Keyword arguments intended for the enhancer constructor.
                 Parameters unsupported by the selected enhancer are ignored
-                with a warning.
+                with a console message and an optional spelling suggestion.
 
         Returns:
             Instantiated enhancer.
@@ -173,17 +173,24 @@ class LLVEnhancer(ABC):
         cls._print_enhancer_params(enhancer)
 
         if unused_kwargs:
-            unused_text = ", ".join(
-                f"{name}={value!r}"
-                for name, value in unused_kwargs.items()
+            supported_names = cls._get_constructor_parameter_names(
+                enhancer_class
             )
-            warnings.warn(
-                f"Algorithm '{enhancer_class.__name__}' does not use the "
-                f"following parameter(s): {unused_text}. These parameters "
-                "were ignored.",
-                UserWarning,
-                stacklevel=2,
-            )
+            for name, value in unused_kwargs.items():
+                suggestions = get_close_matches(
+                    name,
+                    supported_names,
+                    n=1,
+                    cutoff=0.6,
+                )
+                message = (
+                    f"Parameter {name!r}={value!r} does not belong to "
+                    f"algorithm '{enhancer_class.__name__}'. It will not be "
+                    "used and will not affect this algorithm's computation."
+                )
+                if suggestions:
+                    message += f" Did you mean {suggestions[0]!r}?"
+                print(message, file=sys.stderr, flush=True)
 
         return enhancer
 
@@ -297,8 +304,6 @@ class LLVEnhancer(ABC):
         Returns:
             Comma-separated suggestion string, or a fallback message.
         """
-        from difflib import get_close_matches
-
         suggestions = get_close_matches(
             enhancer_name,
             available_enhancers,

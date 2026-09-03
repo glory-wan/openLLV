@@ -67,7 +67,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 构造器：`Predictor(method="he", output_dir=None, config=None, **kwargs)`。
 
 - `method`：注册名或 `LLVEnhancer` 实例。实例会强制 `set_params(output_type="numpy")`。
-- `config` + `**kwargs`：合并后传给 `LLVEnhancer.create_enhancer`；**不支持的参数被忽略并告警**。
+- `config` + `**kwargs`：合并后传给 `LLVEnhancer.create_enhancer`；不支持的参数会被忽略，同时控制台逐项说明其不会被使用且不影响计算；近似合法名称会附带拼写建议。
 - `LLVEnhancer` 基类构造参数：`output_type="numpy"`、`keep_dtype=True`、`clip_output=True`、`value_range="auto"`。`value_range` 还接受 `"unit"`、`"byte"` 或两个有限递增数值组成的 tuple/list。
 - `value_range="auto"`：`uint8` 使用 `[0,255]`，其它整数使用 `[0, dtype.max]`；浮点最大值 `<= 1` 推断为 `[0,1]`，否则最大值 `<= 255` 推断为 `[0,255]`。自动模式拒绝负值和大于 `255` 的浮点值（可改用显式自定义值域）；非有限浮点值始终拒绝；最大值 `<= 1` 的字节值域浮点图须显式传 `"byte"`。
 - `predict_single(image, save_path=None, *, output_name=None, output_ext=None, save=True, **kwargs)`：返回 RGB `(numpy.ndarray, Path|None)`；OpenCV BGR 仅用于算法内部。
@@ -122,7 +122,7 @@ Evaluator(en_img_dir, ref_img_dir=None, save_path=None, metrics=None,
 
 - 模型注册名：类名 + `aliases` 类属性，`LLVModel._model_registry`，查找时 `strip().lower()`（大小写不敏感）。
 - 算法注册名：类 `name` 属性 + 别名，`LLVEnhancer._enhancer_registry`，同样大小写不敏感。
-- 组件参数入口：`LLVEnhancer.create_enhancer(name, **kwargs)` 会把不支持的参数过滤掉并告警（与深度后端行为不同——深度后端 kwargs 进模型 `config`）。所有传统算法都继承基类参数 `output_type`、`keep_dtype`、`clip_output`、`value_range`。
+- 组件参数入口：`LLVEnhancer.create_enhancer(name, **kwargs)` 会过滤不支持的参数，在控制台逐项说明其不会被使用且不影响计算，并为近似合法名称附带拼写建议（与深度后端行为不同——深度后端 kwargs 进模型 `config`）。所有传统算法都继承基类参数 `output_type`、`keep_dtype`、`clip_output`、`value_range`。
 - `LLVModel` 构造器：`LLVModel(config=None, **kwargs)`，kwargs 覆盖 config 同名键，最终存入 `self.config`（含 `model_name`、`input_channels`、`save_dir` 默认值）；模型具体参数在 `_init_model()` 中从 `self.config` 读取（如 `input_gamma`、`saturation_scale` 等），**写组件文档时必须逐个读取 `_init_model` 中读取的 config 键**。
 
 ## 常规查询命令（撰写时可复现）

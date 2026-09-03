@@ -23,7 +23,7 @@ BIMEF fuses the original image with an automatically or manually exposed copy us
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB; BGR/BGRA are only the internal `_enhance()` working layouts. The algorithm also accepts grayscale internally, normalizes values to `[0, 1]`, preserves alpha/channel layout, and restores the source value range. When `exposure_ratio=None`, it estimates `clip(target_mean / mean_luminance, 1, max_ratio)`. Every algorithm parameter can also be passed to `enhance()` as a one-call override; overrides are validated and do not mutate stored parameters. Factory creation filters constructor keys and warns about unsupported keys.
+Public three-channel input and NumPy output use RGB; BGR/BGRA are only the internal `_enhance()` working layouts. The algorithm also accepts grayscale internally, normalizes values to `[0, 1]`, preserves alpha/channel layout, and restores the source value range. When `exposure_ratio=None`, it estimates `clip(target_mean / mean_luminance, 1, max_ratio)`. Every algorithm parameter can also be passed to `enhance()` as a one-call override; overrides are validated and do not mutate stored parameters. Factory creation ignores unsupported constructor keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 

@@ -26,11 +26,13 @@ def get_img_from_folder(folder_path):
     Returns:
         Sorted list of image file paths.
     """
+    # Imported lazily because image_io imports ConvertFormat from this module.
+    from openLLV.data.image_io import ImageReader
+
     image_files = []
     for root, _, files in os.walk(folder_path):
         for f in tqdm(files, desc=f'Reading images in {root}', unit='image'):
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif',
-                                   '.tiff', '.tif', '.webp', '.ico', 'heic')):
+            if Path(f).suffix.lower() in ImageReader.SUPPORTED_EXTENSIONS:
                 image_files.append(os.path.join(root, f))
 
     image_files.sort()
@@ -228,6 +230,4 @@ class ConvertFormat:
         if img.ndim == 3 and img.shape[2] == 3:
             return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img
-
-
 

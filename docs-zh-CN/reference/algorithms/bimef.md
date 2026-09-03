@@ -23,7 +23,7 @@ BIMEF 使用对比度、饱和度和良好曝光度权重，融合原图与自�
 
 ## Implementation Notes
 
-公共三通道输入和 NumPy 输出使用 RGB；BGR/BGRA 仅是 `_enhance()` 的内部工作布局。算法内部也接受灰度图，归一化至 `[0, 1]`，保留 alpha/通道布局并恢复源值域。`exposure_ratio=None` 时估计 `clip(target_mean / mean_luminance, 1, max_ratio)`。每个算法参数也可传给 `enhance()` 作为单次覆盖值；覆盖值会校验但不修改已存参数。工厂创建会过滤不支持的构造键并告警。
+公共三通道输入和 NumPy 输出使用 RGB；BGR/BGRA 仅是 `_enhance()` 的内部工作布局。算法内部也接受灰度图，归一化至 `[0, 1]`，保留 alpha/通道布局并恢复源值域。`exposure_ratio=None` 时估计 `clip(target_mean / mean_luminance, 1, max_ratio)`。每个算法参数也可传给 `enhance()` 作为单次覆盖值；覆盖值会校验但不修改已存参数。工厂会忽略不支持的构造键，并在控制台说明其不会被使用且不影响计算；近似拼写会获得建议。
 
 ## Parameters
 

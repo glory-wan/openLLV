@@ -41,9 +41,7 @@ class BaseDataset(Dataset, ABC):
     dataset uses a special pairing rule, override `_build_pairs` as well.
     """
 
-    supported_extensions = {
-        ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"
-    }
+    supported_extensions = ImageReader.SUPPORTED_EXTENSIONS
     name = "BaseDataset"
     aliases: List[str] = []
     _dataset_registry: Dict[str, Type["BaseDataset"]] = {}

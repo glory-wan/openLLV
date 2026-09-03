@@ -21,7 +21,8 @@ class ImageDiscoveryTests(unittest.TestCase):
                 "z.JPG",
                 "a.png",
                 "nested/b.webp",
-                "nested/c.HEIC",
+                "nested/c.PGM",
+                "nested/ignored.HEIC",
                 "nested/not_image.txt",
             ):
                 path = root / relative_path
@@ -39,7 +40,7 @@ class ImageDiscoveryTests(unittest.TestCase):
                 str(root / "z.JPG"),
                 str(root / "a.png"),
                 str(root / "nested/b.webp"),
-                str(root / "nested/c.HEIC"),
+                str(root / "nested/c.PGM"),
             ]
         )
         self.assertEqual(images, expected)

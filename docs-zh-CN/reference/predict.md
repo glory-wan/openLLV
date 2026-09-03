@@ -38,7 +38,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `timeout` | `float` | `10` | 远程来源的 URL 超时（经 `**kwargs`） |
 | `headers` | `Dict[str, str]` | 默认 User-Agent 字典 | 远程来源的 HTTP 头（经 `**kwargs`） |
 | `verify_ssl` | `bool` | `True` | 远程来源的 SSL 校验（经 `**kwargs`） |
-| 其它 `**kwargs` | — | — | 深度后端：模型配置覆盖（合并进 `config`）；传统后端：算法构造参数，不支持的参数被忽略并告警 |
+| 其它 `**kwargs` | — | — | 深度后端：模型配置覆盖（合并进 `config`）；传统后端：算法构造参数；不支持的参数会被忽略，同时控制台说明其不会被使用且不影响计算，并在存在近似合法名称时给出拼写建议 |
 
 ### Aliases
 
@@ -96,7 +96,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 ### 传统算法细节
 
-- `config` 与其余 `**kwargs` 传给 `LLVEnhancer.create_enhancer()`；所选算法不支持的参数被忽略并发出 `UserWarning`。
+- `config` 与其余 `**kwargs` 传给 `LLVEnhancer.create_enhancer()`。对于所选算法不支持的每个参数，工厂会在控制台明确说明该参数不会被使用、不会影响算法计算，然后将其忽略；若存在近似的合法参数名，还会输出 `Did you mean ...?` 拼写建议。
 - 逐图参数覆盖也可传给 `Predictor.predict_single()`。
 - `value_range="auto"` 会保持通常的浮点 `[0,1]` 与 `[0,255]` 约定。最大值 `<= 1` 的字节值域浮点图存在歧义，应使用 `"byte"`。负值或大于 `255` 的浮点值需要显式有效的自定义值域；非有限输入值始终会被拒绝。
 

@@ -23,7 +23,7 @@ LIME estimates illumination from the per-pixel channel maximum, refines it with 
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB; LIME supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to LIME's `[0,1]` working range, then restores the original value-range convention and optional dtype. Each algorithm parameter may be supplied to `enhance()` for one call, where it is validated without mutating stored state. Factory creation filters and warns about unsupported constructor keys.
+Public three-channel input and NumPy output use RGB; LIME supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to LIME's `[0,1]` working range, then restores the original value-range convention and optional dtype. Each algorithm parameter may be supplied to `enhance()` for one call, where it is validated without mutating stored state. Factory creation ignores unsupported constructor keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 

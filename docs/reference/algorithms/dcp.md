@@ -23,7 +23,7 @@ DarkChannel applies the Dark Channel Prior to the inverted input and inverts the
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB. The base class converts it to the three-channel BGR, 8-bit working image expected by `_enhance()` and converts the result back to RGB. DCP estimates atmospheric light and transmission on the inverted image, refines transmission with a grayscale guided filter, and returns values scaled by `255`. Unlike the other algorithms in this group, `_enhance()` ignores all runtime keyword arguments: change algorithm values at construction or with `set_params()` instead. Factory creation filters unsupported constructor keys and emits `UserWarning`.
+Public three-channel input and NumPy output use RGB. The base class converts it to the three-channel BGR, 8-bit working image expected by `_enhance()` and converts the result back to RGB. DCP estimates atmospheric light and transmission on the inverted image, refines transmission with a grayscale guided filter, and returns values scaled by `255`. Unlike the other algorithms in this group, `_enhance()` ignores all runtime keyword arguments: change algorithm values at construction or with `set_params()` instead. Factory creation ignores unsupported constructor keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 

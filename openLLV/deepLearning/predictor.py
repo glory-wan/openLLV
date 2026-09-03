@@ -168,21 +168,7 @@ class Predictor:
     recursively while preserving their relative directory structure.
     """
 
-    SUPPORTED_EXTENSIONS = {
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".bmp",
-        ".tiff",
-        ".tif",
-        ".webp",
-        ".gif",
-        ".ppm",
-        ".pgm",
-        ".pbm",
-        ".sr",
-        ".ras",
-    }
+    SUPPORTED_EXTENSIONS = ImageReader.SUPPORTED_EXTENSIONS
 
     CHECKPOINT_EXTENSIONS = {".pt", ".pth"}
 

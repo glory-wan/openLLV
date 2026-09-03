@@ -16,6 +16,8 @@ ROOT = EXAMPLES_DIR.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from openLLV.data.image_io import ImageReader  # noqa: E402
+
 
 RESULTS_DIR = Path(
     os.environ.get("OPENLLV_EXAMPLES_OUTPUT", EXAMPLES_DIR / "outputs")
@@ -24,15 +26,7 @@ INPUTS_DIR = Path(
     os.environ.get("OPENLLV_EXAMPLES_INPUTS", ROOT / "Inputs")
 ).expanduser()
 
-IMAGE_EXTENSIONS = {
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".bmp",
-    ".tif",
-    ".tiff",
-    ".webp",
-}
+IMAGE_EXTENSIONS = ImageReader.SUPPORTED_EXTENSIONS
 
 
 def ensure_results_dir(*parts: str) -> Path:

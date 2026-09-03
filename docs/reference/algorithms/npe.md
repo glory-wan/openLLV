@@ -23,7 +23,7 @@ NPE estimates bright-pass illumination, applies a bi-log mapping, restores refle
 
 ## Implementation Notes
 
-Public three-channel input and NumPy output use RGB; NPE supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to NPE's `[0,1]` working range and restores the original value-range convention and optional dtype. All algorithm parameters are accepted as validated one-call `enhance()` overrides without mutating stored state. Factory creation filters unsupported constructor keys and warns.
+Public three-channel input and NumPy output use RGB; NPE supports BGR/BGRA only as internal `_enhance()` layouts and also supports grayscale internally. It preserves grayscale/alpha layout. The base maps the resolved source range to NPE's `[0,1]` working range and restores the original value-range convention and optional dtype. All algorithm parameters are accepted as validated one-call `enhance()` overrides without mutating stored state. Factory creation ignores unsupported constructor keys after printing that they are unused and cannot affect computation; close spellings receive a suggestion.
 
 ## Parameters
 
