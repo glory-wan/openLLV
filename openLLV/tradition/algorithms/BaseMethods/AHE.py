@@ -48,11 +48,6 @@ class AHE(LLVEnhancer):
         self.color_space = self._normalize_color_space(color_space)
         self.tile_grid_size = self._validate_tile_grid_size(tile_grid_size)
 
-        self._clahe = cv2.createCLAHE(
-            clipLimit=255.0,
-            tileGridSize=self.tile_grid_size,
-        )
-
     def _enhance(self, image: np.ndarray, **kwargs: Any) -> np.ndarray:
         """Apply adaptive histogram equalization.
 
@@ -67,25 +62,29 @@ class AHE(LLVEnhancer):
             ValueError: If ``color_space`` is unsupported.
         """
         img = self._ensure_uint8(image)
+        clahe = cv2.createCLAHE(
+            clipLimit=255.0,
+            tileGridSize=self.tile_grid_size,
+        )
 
         if img.ndim == 2 or img.shape[2] == 1:
             gray = img if img.ndim == 2 else img[:, :, 0]
-            return self._clahe.apply(gray)
+            return clahe.apply(gray)
 
         if self.color_space == "rgb":
-            return self._process_rgb(img)
+            return self._process_rgb(img, clahe)
         elif self.color_space == "hsv":
-            return self._process_hsv(img)
+            return self._process_hsv(img, clahe)
         elif self.color_space == "hls":
-            return self._process_hls(img)
+            return self._process_hls(img, clahe)
         elif self.color_space == "yuv":
-            return self._process_yuv(img)
+            return self._process_yuv(img, clahe)
         elif self.color_space == "lab":
-            return self._process_lab(img)
+            return self._process_lab(img, clahe)
 
         raise ValueError(f"Unsupported color space: {self.color_space}")
 
-    def _process_rgb(self, img):
+    def _process_rgb(self, img, clahe):
         """Apply equalization to each BGR channel.
 
         Args:
@@ -95,10 +94,10 @@ class AHE(LLVEnhancer):
             Equalized BGR image array.
         """
         ch = cv2.split(img)
-        ch = [self._clahe.apply(c) for c in ch]
+        ch = [clahe.apply(c) for c in ch]
         return cv2.merge(ch)
 
-    def _process_hsv(self, img):
+    def _process_hsv(self, img, clahe):
         """Apply equalization to the HSV value channel.
 
         Args:
@@ -109,10 +108,10 @@ class AHE(LLVEnhancer):
         """
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         h, s, v = cv2.split(hsv)
-        v = self._clahe.apply(v)
+        v = clahe.apply(v)
         return cv2.cvtColor(cv2.merge([h, s, v]), cv2.COLOR_HSV2BGR)
 
-    def _process_hls(self, img):
+    def _process_hls(self, img, clahe):
         """Apply equalization to the HLS lightness channel.
 
         Args:
@@ -123,10 +122,10 @@ class AHE(LLVEnhancer):
         """
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
         h, l, s = cv2.split(hls)
-        l = self._clahe.apply(l)
+        l = clahe.apply(l)
         return cv2.cvtColor(cv2.merge([h, l, s]), cv2.COLOR_HLS2BGR)
 
-    def _process_yuv(self, img):
+    def _process_yuv(self, img, clahe):
         """Apply equalization to the YUV luminance channel.
 
         Args:
@@ -137,10 +136,10 @@ class AHE(LLVEnhancer):
         """
         yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         y, u, v = cv2.split(yuv)
-        y = self._clahe.apply(y)
+        y = clahe.apply(y)
         return cv2.cvtColor(cv2.merge([y, u, v]), cv2.COLOR_YUV2BGR)
 
-    def _process_lab(self, img):
+    def _process_lab(self, img, clahe):
         """Apply equalization to the LAB lightness channel.
 
         Args:
@@ -151,7 +150,7 @@ class AHE(LLVEnhancer):
         """
         lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
-        l = self._clahe.apply(l)
+        l = clahe.apply(l)
         return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
     def _normalize_color_space(self, cs: str) -> str:

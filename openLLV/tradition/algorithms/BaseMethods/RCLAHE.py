@@ -54,11 +54,6 @@ class RCLAHE(LLVEnhancer):
         self.tile_grid_size = self._validate_tile_grid_size(tile_grid_size)
         self.iterations = self._validate_iterations(iterations)
 
-        self._clahe = cv2.createCLAHE(
-            clipLimit=self.clip_limit,
-            tileGridSize=self.tile_grid_size,
-        )
-
     def _enhance(self, image: np.ndarray, **kwargs: Any) -> np.ndarray:
         """Apply recursive CLAHE enhancement.
 
@@ -70,13 +65,17 @@ class RCLAHE(LLVEnhancer):
             Enhanced image array.
         """
         img = self._ensure_uint8(image)
+        clahe = cv2.createCLAHE(
+            clipLimit=self.clip_limit,
+            tileGridSize=self.tile_grid_size,
+        )
 
         for _ in range(self.iterations):
-            img = self._apply_once(img)
+            img = self._apply_once(img, clahe)
 
         return img
 
-    def _apply_once(self, img):
+    def _apply_once(self, img, clahe):
         """Apply one CLAHE iteration.
 
         Args:
@@ -90,33 +89,33 @@ class RCLAHE(LLVEnhancer):
         """
         if img.ndim == 2 or img.shape[2] == 1:
             gray = img if img.ndim == 2 else img[:, :, 0]
-            return self._clahe.apply(gray)
+            return clahe.apply(gray)
 
         if self.color_space == "rgb":
-            return cv2.merge([self._clahe.apply(c) for c in cv2.split(img)])
+            return cv2.merge([clahe.apply(c) for c in cv2.split(img)])
 
         elif self.color_space == "hsv":
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             h, s, v = cv2.split(hsv)
-            v = self._clahe.apply(v)
+            v = clahe.apply(v)
             return cv2.cvtColor(cv2.merge([h, s, v]), cv2.COLOR_HSV2BGR)
 
         elif self.color_space == "hls":
             hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
             h, l, s = cv2.split(hls)
-            l = self._clahe.apply(l)
+            l = clahe.apply(l)
             return cv2.cvtColor(cv2.merge([h, l, s]), cv2.COLOR_HLS2BGR)
 
         elif self.color_space == "yuv":
             yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
             y, u, v = cv2.split(yuv)
-            y = self._clahe.apply(y)
+            y = clahe.apply(y)
             return cv2.cvtColor(cv2.merge([y, u, v]), cv2.COLOR_YUV2BGR)
 
         elif self.color_space == "lab":
             lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
-            l = self._clahe.apply(l)
+            l = clahe.apply(l)
             return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
         raise ValueError(f"Unsupported color space: {self.color_space}")

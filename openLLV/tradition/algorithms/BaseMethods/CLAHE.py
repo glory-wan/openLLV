@@ -51,11 +51,6 @@ class CLAHE(LLVEnhancer):
         self.clip_limit = self._validate_clip_limit(clip_limit)
         self.tile_grid_size = self._validate_tile_grid_size(tile_grid_size)
 
-        self._clahe = cv2.createCLAHE(
-            clipLimit=self.clip_limit,
-            tileGridSize=self.tile_grid_size,
-        )
-
     def _enhance(self, image: np.ndarray, **kwargs: Any) -> np.ndarray:
         """Apply CLAHE enhancement.
 
@@ -70,25 +65,29 @@ class CLAHE(LLVEnhancer):
             ValueError: If ``color_space`` is unsupported.
         """
         img = self._ensure_uint8(image)
+        clahe = cv2.createCLAHE(
+            clipLimit=self.clip_limit,
+            tileGridSize=self.tile_grid_size,
+        )
 
         if img.ndim == 2 or img.shape[2] == 1:
             gray = img if img.ndim == 2 else img[:, :, 0]
-            return self._clahe.apply(gray)
+            return clahe.apply(gray)
 
         if self.color_space == "rgb":
-            return self._rgb(img)
+            return self._rgb(img, clahe)
         elif self.color_space == "hsv":
-            return self._hsv(img)
+            return self._hsv(img, clahe)
         elif self.color_space == "hls":
-            return self._hls(img)
+            return self._hls(img, clahe)
         elif self.color_space == "yuv":
-            return self._yuv(img)
+            return self._yuv(img, clahe)
         elif self.color_space == "lab":
-            return self._lab(img)
+            return self._lab(img, clahe)
 
         raise ValueError(f"Unsupported color space: {self.color_space}")
 
-    def _rgb(self, img):
+    def _rgb(self, img, clahe):
         """Apply CLAHE to each BGR channel.
 
         Args:
@@ -97,9 +96,9 @@ class CLAHE(LLVEnhancer):
         Returns:
             Enhanced BGR image array.
         """
-        return cv2.merge([self._clahe.apply(c) for c in cv2.split(img)])
+        return cv2.merge([clahe.apply(c) for c in cv2.split(img)])
 
-    def _hsv(self, img):
+    def _hsv(self, img, clahe):
         """Apply CLAHE to the HSV value channel.
 
         Args:
@@ -110,10 +109,10 @@ class CLAHE(LLVEnhancer):
         """
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         h, s, v = cv2.split(hsv)
-        v = self._clahe.apply(v)
+        v = clahe.apply(v)
         return cv2.cvtColor(cv2.merge([h, s, v]), cv2.COLOR_HSV2BGR)
 
-    def _hls(self, img):
+    def _hls(self, img, clahe):
         """Apply CLAHE to the HLS lightness channel.
 
         Args:
@@ -124,10 +123,10 @@ class CLAHE(LLVEnhancer):
         """
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
         h, l, s = cv2.split(hls)
-        l = self._clahe.apply(l)
+        l = clahe.apply(l)
         return cv2.cvtColor(cv2.merge([h, l, s]), cv2.COLOR_HLS2BGR)
 
-    def _yuv(self, img):
+    def _yuv(self, img, clahe):
         """Apply CLAHE to the YUV luminance channel.
 
         Args:
@@ -138,10 +137,10 @@ class CLAHE(LLVEnhancer):
         """
         yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         y, u, v = cv2.split(yuv)
-        y = self._clahe.apply(y)
+        y = clahe.apply(y)
         return cv2.cvtColor(cv2.merge([y, u, v]), cv2.COLOR_YUV2BGR)
 
-    def _lab(self, img):
+    def _lab(self, img, clahe):
         """Apply CLAHE to the LAB lightness channel.
 
         Args:
@@ -152,7 +151,7 @@ class CLAHE(LLVEnhancer):
         """
         lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
-        l = self._clahe.apply(l)
+        l = clahe.apply(l)
         return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
     def _normalize_color_space(self, cs: str) -> str:
