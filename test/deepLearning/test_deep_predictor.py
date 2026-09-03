@@ -13,7 +13,7 @@ from PIL import Image
 from torch.utils.data import DataLoader as TorchDataLoader
 
 import openLLV.deepLearning as deep_learning
-from openLLV.deepLearning.models import LLVModel, ZeroDCE
+from openLLV.deepLearning.models import LLVModel, ZeroDCE, ZeroDCEPlusPlus
 from openLLV.deepLearning.predictor import Predictor
 
 
@@ -95,6 +95,34 @@ class ZeroDCEModelTests(unittest.TestCase):
         self.assertEqual(initializer.call_count, 7)
         for call in initializer.call_args_list:
             self.assertEqual(call.kwargs, {"mean": 0.0, "std": 0.02})
+
+    def test_plusplus_weight_initialization_is_optional(self):
+        with patch(
+            "torch.nn.init.normal_",
+            wraps=torch.nn.init.normal_,
+        ) as initializer:
+            ZeroDCEPlusPlus()
+        initializer.assert_not_called()
+
+        with patch(
+            "torch.nn.init.normal_",
+            wraps=torch.nn.init.normal_,
+        ) as initializer:
+            ZeroDCEPlusPlus(config={"initialize_weights": True})
+        self.assertEqual(initializer.call_count, 14)
+        for call in initializer.call_args_list:
+            self.assertEqual(call.kwargs, {"mean": 0.0, "std": 0.02})
+
+        with self.assertRaisesRegex(TypeError, "must be a boolean"):
+            ZeroDCEPlusPlus(config={"initialize_weights": 1})
+
+    def test_plusplus_scale_factor_is_used_in_training(self):
+        model = ZeroDCEPlusPlus(config={"mode": "train", "scale_factor": 2})
+
+        output = model(torch.rand(1, 3, 24, 24))
+
+        self.assertEqual(output["pred"].shape, (1, 3, 24, 24))
+        self.assertEqual(output["aux"]["r"].shape, (1, 3, 24, 24))
 
 
 class PredictorInitializationTests(unittest.TestCase):

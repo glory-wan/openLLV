@@ -79,7 +79,7 @@ class ZeroDCE_extension_Loss(BaseLoss):
         loss_TV = self.L_TV(A) * 1600
         loss_spa = torch.mean(self.L_spa(enhanced_image, img_lowlight))
         loss_col = torch.mean(self.L_color(enhanced_image)) * 5
-        loss_exp = torch.mean(self.L_exp(img_lowlight)) * 10
+        loss_exp = torch.mean(self.L_exp(enhanced_image, 0.6)) * 10
 
         loss = loss_TV + loss_spa + loss_col + loss_exp
 
@@ -189,11 +189,12 @@ class L_exp(nn.Module):
         self.pool = nn.AvgPool2d(patch_size)
         self.mean_val = mean_val
 
-    def forward(self, x):
+    def forward(self, x, mean_val=None):
         """Compute exposure control loss.
 
         Args:
             x: Image tensor with shape ``[B, C, H, W]``.
+            mean_val: Optional exposure target overriding the configured value.
 
         Returns:
             Scalar exposure loss tensor.
@@ -202,7 +203,8 @@ class L_exp(nn.Module):
         x = torch.mean(x, 1, keepdim=True)
         mean = self.pool(x)
 
-        d = torch.mean(torch.pow(mean - mean.new_tensor(self.mean_val), 2))
+        target = self.mean_val if mean_val is None else mean_val
+        d = torch.mean(torch.pow(mean - mean.new_tensor(target), 2))
         return d
 
 
@@ -264,4 +266,3 @@ class Sa_Loss(nn.Module):
 
         k = torch.mean(k)
         return k
-

@@ -1,6 +1,7 @@
 model:
   name: ZeroDCEPlusPlus
-  params: {}
+  params:
+    initialize_weights: false
 data:
   dataset: CommonDataset
   root_dir: path/to/your/dataset

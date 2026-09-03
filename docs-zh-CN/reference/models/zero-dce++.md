@@ -25,7 +25,7 @@ Zero-DCE++ 是基于深度可分离卷积的紧凑曲线估计网络，注册名
 
 ## Implementation Notes
 
-`ZeroDCEPlusPlus(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个深度可分离卷积块估计一个三通道曲线图，再执行八次二次更新。仅在推理中，`scale_factor > 1` 会先下采样图像进行曲线估计，再上采样曲线图。训练不下采样，却仍在 `scale_factor > 1` 时上采样曲线图，会使其空间尺寸与原图不兼容，因此训练应使用 `scale_factor=1`。训练返回含增强结果与曲线图的标准字典，推理返回张量。`train_mode()` 与 `eval_mode()` 同时更新配置模式和下采样模块。
+`ZeroDCEPlusPlus(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个深度可分离卷积块估计一个三通道曲线图，再执行八次二次更新。与官方实现一致，任一模式下只要 `scale_factor != 1`，都会先按 `1 / scale_factor` 缩放输入，在该分辨率估计曲线图，再按 `scale_factor` 缩放曲线图并增强原图。可选的卷积权重初始化使用 $N(0, 0.02)$，默认关闭。无参考损失基于增强图像计算曝光控制项，目标值为 `0.6`。训练返回含增强结果与曲线图的标准字典，推理返回张量。
 
 ## Parameters
 
@@ -37,15 +37,25 @@ Zero-DCE++ 是基于深度可分离卷积的紧凑曲线估计网络，注册名
 | `input_channels` | `int` | `3` | 第一深度卷积块接受的通道数。 | 必须为正整数；实际必须为 `3`，因为曲线输出与图像运算为三通道。 |
 | `save_dir` | `str` | `"./checkpoints/llie/ZeroDCEPlusPlus"` | 默认检查点/配置输出目录。 | 构造时不校验。 |
 | `number_f` | `int` | `32` | 曲线估计网络特征宽度。 | 必须可比较且大于 `0`，否则抛 `ValueError`。 |
-| `scale_factor` | `int | float` | `1` | 推理时曲线估计下采样与曲线图上采样倍数。 | 必须可比较且大于 `0`，否则抛 `ValueError`；训练须使用 `1` 以保持空间尺寸兼容。 |
-| `mode` | `str` | `"inference"` | 选择架构路由与输出契约。 | 只能是 `"train"` 或 `"inference"`，否则抛 `ValueError`。 |
+| `scale_factor` | `int | float` | `1` | 训练和推理共同使用的输入倒数缩放及曲线图缩放倍数。 | 必须可比较且大于 `0`，否则抛 `ValueError`；非 `1` 时，输入尺寸须经两次缩放后与原图尺寸一致。 |
+| `initialize_weights` | `bool` | `False` | 构造时是否将全部卷积权重按 $N(0, 0.02)$ 初始化。 | 必须为布尔值，否则抛 `TypeError`；偏置保留 PyTorch 默认初始化。 |
+| `mode` | `str` | `"inference"` | 选择训练字典或推理张量输出契约。 | 只能是 `"train"` 或 `"inference"`，否则抛 `ValueError`。 |
 
 ## Usage Example
 
 ```python
 import openLLV as llv
 
-enhanced, saved_path = llv.predict("ZeroDCEPlusPlus", "input.jpg", output="results/zero-dce++/output.png", config={"scale_factor": 2, "mode": "inference"})
+enhanced, saved_path = llv.predict(
+    "ZeroDCEPlusPlus",
+    "input.jpg",
+    output="results/zero-dce++/output.png",
+    config={
+        "scale_factor": 2,
+        "initialize_weights": True,
+        "mode": "inference",
+    },
+)
 ```
 
 ```python

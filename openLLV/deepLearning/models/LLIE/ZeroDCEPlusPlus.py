@@ -36,6 +36,7 @@ class ZeroDCEPlusPlus(LLVModel):
         default_config.update({
             'number_f': 32,
             'scale_factor': 1,
+            'initialize_weights': False,
             'mode': 'inference'
         })
         return default_config
@@ -52,6 +53,8 @@ class ZeroDCEPlusPlus(LLVModel):
             raise ValueError("'number_f' must be positive")
         if self.config['scale_factor'] <= 0:
             raise ValueError("'scale_factor' must be positive")
+        if not isinstance(self.config['initialize_weights'], bool):
+            raise TypeError("'initialize_weights' must be a boolean")
         if self.config['mode'] not in ['train', 'inference']:
             raise ValueError("'mode' must be 'train' or 'inference'")
 
@@ -112,10 +115,14 @@ class ZeroDCEPlusPlus(LLVModel):
         self.relu = nn.ReLU(inplace=True)
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
 
-        if self.config['mode'] == 'inference' and scale_factor > 1:
-            self.downsample = nn.UpsamplingBilinear2d(scale_factor=1 / scale_factor)
-        else:
-            self.downsample = None
+        if self.config['initialize_weights']:
+            self.apply(self._init_weights)
+
+    @staticmethod
+    def _init_weights(module: nn.Module) -> None:
+        """Initialize convolution weights with the optional normal distribution."""
+        if isinstance(module, nn.Conv2d):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def _enhance(self, x: torch.Tensor, x_r: torch.Tensor) -> torch.Tensor:
         """Apply curve estimation to enhance an image.
@@ -153,10 +160,14 @@ class ZeroDCEPlusPlus(LLVModel):
         """
         scale_factor = self.config['scale_factor']
 
-        if scale_factor > 1 and self.downsample is not None and self.config['mode'] == 'inference':
-            x_down = self.downsample(x)
-        else:
+        if scale_factor == 1:
             x_down = x
+        else:
+            x_down = F.interpolate(
+                x,
+                scale_factor=1 / scale_factor,
+                mode='bilinear',
+            )
 
         x1 = self.relu(self.e_conv1(x_down))
         x2 = self.relu(self.e_conv2(x1))
@@ -166,7 +177,7 @@ class ZeroDCEPlusPlus(LLVModel):
         x6 = self.relu(self.e_conv6(torch.cat([x2, x5], 1)))
         x_r = F.tanh(self.e_conv7(torch.cat([x1, x6], 1)))
 
-        if scale_factor > 1 and scale_factor != 1:
+        if scale_factor != 1:
             x_r = self.upsample(x_r)
 
         enhance_image = self._enhance(x, x_r)
@@ -192,8 +203,6 @@ class ZeroDCEPlusPlus(LLVModel):
         """
         self.config['mode'] = 'train'
         self.train()
-        if hasattr(self, 'downsample'):
-            self.downsample = None
         return self
 
     def eval_mode(self):
@@ -204,8 +213,4 @@ class ZeroDCEPlusPlus(LLVModel):
         """
         self.config['mode'] = 'inference'
         self.eval()
-        if self.config['scale_factor'] > 1:
-            self.downsample = nn.UpsamplingBilinear2d(
-                scale_factor=1 / self.config['scale_factor']
-            )
         return self

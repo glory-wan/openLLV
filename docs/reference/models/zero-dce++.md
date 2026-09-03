@@ -25,7 +25,7 @@ Zero-DCE++ is a compact curve-estimation network based on depthwise-separable co
 
 ## Implementation Notes
 
-`ZeroDCEPlusPlus(config=None, **kwargs)` merges keyword overrides after `config`. Seven depthwise-separable blocks estimate one three-channel curve map, which is applied in eight quadratic updates. In inference only, `scale_factor > 1` downsamples the image before curve estimation and upsamples the curve map before enhancement. Training does not downsample, but still upsamples the curve map when `scale_factor > 1`; this makes its spatial size incompatible with the original input, so training configurations should use `scale_factor=1`. Training returns a standardized dictionary with the enhanced result and curve map; inference returns a tensor. `train_mode()` and `eval_mode()` update both the configured mode and the downsampling module.
+`ZeroDCEPlusPlus(config=None, **kwargs)` merges keyword overrides after `config`. Seven depthwise-separable blocks estimate one three-channel curve map, which is applied in eight quadratic updates. Following the official implementation, every mode resizes the input by `1 / scale_factor` when `scale_factor != 1`, estimates the curve map at that resolution, and resizes the curve map by `scale_factor` before enhancing the original image. Optional convolution-weight initialization uses $N(0, 0.02)$ and is disabled by default. The reference-free loss applies exposure control to the enhanced image with target `0.6`. Training returns a standardized dictionary with the enhanced result and curve map; inference returns a tensor.
 
 ## Parameters
 
@@ -37,8 +37,9 @@ Zero-DCE++ is a compact curve-estimation network based on depthwise-separable co
 | `input_channels` | `int` | `3` | Channels accepted by the first depthwise block. | Must be a positive integer; operationally must be `3` because the curve output and image arithmetic are three-channel. |
 | `save_dir` | `str` | `"./checkpoints/llie/ZeroDCEPlusPlus"` | Default checkpoint/configuration output directory. | No constructor validation. |
 | `number_f` | `int` | `32` | Feature width of the curve-estimation network. | Must compare greater than `0`; otherwise `ValueError` is raised. |
-| `scale_factor` | `int | float` | `1` | Inference curve-estimation downsampling and curve-map upsampling factor. | Must compare greater than `0`; otherwise `ValueError` is raised. Use `1` for training to preserve spatial compatibility. |
-| `mode` | `str` | `"inference"` | Selects architecture routing and output contract. | Exactly `"train"` or `"inference"`; otherwise `ValueError` is raised. |
+| `scale_factor` | `int | float` | `1` | Reciprocal input-resize and curve-map-resize factor used in both training and inference. | Must compare greater than `0`; otherwise `ValueError` is raised. When not `1`, input dimensions must round-trip through both scaling operations to match the original image. |
+| `initialize_weights` | `bool` | `False` | Whether to initialize every convolution weight from $N(0, 0.02)$ during construction. | Must be a Boolean; otherwise `TypeError` is raised. Biases retain their PyTorch initialization. |
+| `mode` | `str` | `"inference"` | Selects the training dictionary or inference tensor output contract. | Exactly `"train"` or `"inference"`; otherwise `ValueError` is raised. |
 
 ## Usage Example
 
@@ -49,7 +50,11 @@ enhanced, saved_path = llv.predict(
     "ZeroDCEPlusPlus",
     "input.jpg",
     output="results/zero-dce++/output.png",
-    config={"scale_factor": 2, "mode": "inference"},
+    config={
+        "scale_factor": 2,
+        "initialize_weights": True,
+        "mode": "inference",
+    },
 )
 ```
 
