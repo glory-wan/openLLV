@@ -35,7 +35,6 @@ class ZeroDCE(LLVModel):
         default_config = super()._get_default_config()
         default_config.update({
             'number_f': 32,  # Number of feature channels
-            'num_iterations': 8,  # Number of iterations (curve parameters)
             'mode': 'inference'  # Mode: 'train' or 'inference'
         })
         return default_config
@@ -50,8 +49,6 @@ class ZeroDCE(LLVModel):
 
         if self.config['number_f'] <= 0:
             raise ValueError("'number_f' must be positive")
-        if self.config['num_iterations'] <= 0:
-            raise ValueError("'num_iterations' must be positive")
         if self.config['mode'] not in ['train', 'inference']:
             raise ValueError("'mode' must be 'train' or 'inference'")
 
@@ -65,9 +62,16 @@ class ZeroDCE(LLVModel):
         self.conv4 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.conv5 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)
         self.conv6 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)
-        self.conv7 = nn.Conv2d(nf * 2, self.config['num_iterations'] * 3, 3, 1, 1, bias=True)
+        self.conv7 = nn.Conv2d(nf * 2, 24, 3, 1, 1, bias=True)
 
         self.relu = nn.ReLU(inplace=True)
+        self.apply(self._init_weights)
+
+    @staticmethod
+    def _init_weights(module: nn.Module) -> None:
+        """Initialize convolution weights with the Zero-DCE distribution."""
+        if isinstance(module, nn.Conv2d):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Dict[str, Any]]:
         """Run a Zero-DCE forward pass.

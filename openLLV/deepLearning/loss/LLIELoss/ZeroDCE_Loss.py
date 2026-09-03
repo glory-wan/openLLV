@@ -40,7 +40,7 @@ class ZeroDCE_Loss(BaseLoss):
         loss_TV = self.L_TV(A) * 200
         loss_spa = torch.mean(self.L_spa(enhanced_image, img_lowlight))
         loss_col = torch.mean(self.L_color(enhanced_image)) * 5
-        loss_exp = torch.mean(self.L_exp(img_lowlight)) * 10
+        loss_exp = torch.mean(self.L_exp(enhanced_image)) * 10
 
         loss = loss_TV + loss_spa + loss_col + loss_exp
 
@@ -264,5 +264,4 @@ class Sa_Loss(nn.Module):
 
         k = torch.mean(k)
         return k
-
 

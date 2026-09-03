@@ -351,6 +351,26 @@ class ModelLossComputeTests(unittest.TestCase):
                 )
                 self.assert_scalar_finite(loss)
 
+    def test_zerodce_exposure_loss_uses_enhanced_image(self):
+        loss_function = LLIELoss.ZeroDCE_Loss()
+        enhanced = torch.full_like(self.input_tensor, 0.75)
+        model_output = {
+            "pred": enhanced,
+            "aux": {
+                "enhanced": enhanced,
+                "r": torch.zeros(1, 24, 16, 16),
+            },
+        }
+
+        with unittest.mock.patch.object(
+            loss_function.L_exp,
+            "forward",
+            wraps=loss_function.L_exp.forward,
+        ) as exposure_forward:
+            loss_function(self.input_tensor, model_output)
+
+        exposure_forward.assert_called_once_with(enhanced)
+
     def test_legacy_loss_inputs_field_remains_supported(self):
         constant = torch.full_like(self.input_tensor, 0.25)
         loss, prediction = LLIELoss.Sci_Loss().compute(

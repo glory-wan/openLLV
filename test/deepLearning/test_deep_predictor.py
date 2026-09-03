@@ -83,6 +83,20 @@ def write_image(path, value=128, size=(8, 6)):
     return path
 
 
+class ZeroDCEModelTests(unittest.TestCase):
+    def test_fixed_curve_count_and_normal_weight_initialization(self):
+        with patch(
+            "torch.nn.init.normal_",
+            wraps=torch.nn.init.normal_,
+        ) as initializer:
+            model = ZeroDCE()
+
+        self.assertEqual(model.conv7.out_channels, 24)
+        self.assertEqual(initializer.call_count, 7)
+        for call in initializer.call_args_list:
+            self.assertEqual(call.kwargs, {"mean": 0.0, "std": 0.02})
+
+
 class PredictorInitializationTests(unittest.TestCase):
     def test_accepts_any_llvmodel_instance_and_owns_device(self):
         model = PredictorIdentityModel()

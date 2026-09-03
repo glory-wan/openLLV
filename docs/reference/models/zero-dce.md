@@ -25,7 +25,7 @@ Zero-DCE estimates per-pixel curve parameters and applies eight quadratic enhanc
 
 ## Implementation Notes
 
-`ZeroDCE(config=None, **kwargs)` merges keyword overrides after `config`. Seven convolution layers estimate curve maps. Although `num_iterations` sizes the last convolution, `forward` unconditionally splits its result into exactly eight three-channel maps and applies exactly eight curve updates. Consequently the operational configuration is `num_iterations=8`; other values pass constructor validation but fail or behave incompatibly during `forward`. Training mode returns a standardized dictionary with `pred`, `aux.enhanced`, and `aux.r`; inference returns the enhanced tensor.
+`ZeroDCE(config=None, **kwargs)` merges keyword overrides after `config`. Seven convolution layers estimate 24 curve-map channels, which `forward` splits into eight three-channel maps and applies in eight curve updates. All convolution weights are initialized from the normal distribution $N(0, 0.02)$. The reference-free training loss computes exposure control from the enhanced image. Training mode returns a standardized dictionary with `pred`, `aux.enhanced`, and `aux.r`; inference returns the enhanced tensor.
 
 ## Parameters
 
@@ -37,7 +37,6 @@ Zero-DCE estimates per-pixel curve parameters and applies eight quadratic enhanc
 | `input_channels` | `int` | `3` | Input channels of the first convolution. | Must be a positive integer. In practice it must be `3`, because the curve maps and update arithmetic are three-channel. |
 | `save_dir` | `str` | `"./checkpoints/llie/ZeroDCE"` | Default checkpoint/configuration output directory. | No constructor validation. |
 | `number_f` | `int` | `32` | Feature width of the curve-estimation network. | Must compare greater than `0`; otherwise `ValueError` is raised. |
-| `num_iterations` | `int` | `8` | Multiplier used to size the output curve maps. | Must compare greater than `0`; operationally must equal `8` because `forward` always unpacks eight maps. |
 | `mode` | `str` | `"inference"` | Selects training dictionary output or inference tensor output. | Exactly `"train"` or `"inference"`; otherwise `ValueError` is raised. |
 
 ## Usage Example
@@ -49,7 +48,7 @@ enhanced, saved_path = llv.predict(
     "ZeroDCE",
     "input.jpg",
     output="results/zero-dce/output.png",
-    config={"number_f": 24, "num_iterations": 8},
+    config={"number_f": 24},
 )
 ```
 

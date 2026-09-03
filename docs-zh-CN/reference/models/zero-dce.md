@@ -25,7 +25,7 @@ Zero-DCE 估计逐像素曲线参数并执行八次二次增强更新，在 open
 
 ## Implementation Notes
 
-`ZeroDCE(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个卷积层估计曲线图。尽管 `num_iterations` 控制末层通道数，`forward` 无条件将结果拆成恰好八个三通道图并执行八次更新。因此可工作的配置是 `num_iterations=8`；其他正值能通过构造校验，但会在前向中失败或产生不兼容行为。训练返回含 `pred`、`aux.enhanced` 与 `aux.r` 的标准字典，推理返回增强张量。
+`ZeroDCE(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个卷积层估计 24 个曲线图通道，`forward` 将其拆成八个三通道图并执行八次曲线更新。所有卷积权重均使用正态分布 $N(0, 0.02)$ 初始化。无参考训练损失基于增强图像计算曝光控制项。训练返回含 `pred`、`aux.enhanced` 与 `aux.r` 的标准字典，推理返回增强张量。
 
 ## Parameters
 
@@ -37,7 +37,6 @@ Zero-DCE 估计逐像素曲线参数并执行八次二次增强更新，在 open
 | `input_channels` | `int` | `3` | 第一层卷积输入通道数。 | 必须为正整数；实际必须为 `3`，因为曲线图与更新运算均为三通道。 |
 | `save_dir` | `str` | `"./checkpoints/llie/ZeroDCE"` | 默认检查点/配置输出目录。 | 构造时不校验。 |
 | `number_f` | `int` | `32` | 曲线估计网络特征宽度。 | 必须可比较且大于 `0`，否则抛 `ValueError`。 |
-| `num_iterations` | `int` | `8` | 决定输出曲线图通道数的乘数。 | 必须可比较且大于 `0`；由于前向固定解包八个图，实际必须为 `8`。 |
 | `mode` | `str` | `"inference"` | 选择训练字典或推理张量输出。 | 只能是 `"train"` 或 `"inference"`，否则抛 `ValueError`。 |
 
 ## Usage Example
@@ -45,7 +44,7 @@ Zero-DCE 估计逐像素曲线参数并执行八次二次增强更新，在 open
 ```python
 import openLLV as llv
 
-enhanced, saved_path = llv.predict("ZeroDCE", "input.jpg", output="results/zero-dce/output.png", config={"number_f": 24, "num_iterations": 8})
+enhanced, saved_path = llv.predict("ZeroDCE", "input.jpg", output="results/zero-dce/output.png", config={"number_f": 24})
 ```
 
 ```python
