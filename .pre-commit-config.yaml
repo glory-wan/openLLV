@@ -1,0 +1,18 @@
+# pre-commit hooks for openLLV.
+#
+# Runs the full test suite before every commit. The project is managed with
+# uv and installed into `.venv`, so the hook invokes that interpreter directly
+# regardless of whether the environment is activated.
+#
+#   pip install -e ".[dev]"   # or: uv pip install -e ".[dev]"
+#   pre-commit install
+#
+repos:
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (full test suite)
+        entry: .venv/bin/python -m pytest test -q
+        language: system
+        types: [python]
+        pass_filenames: false

@@ -135,7 +135,7 @@ class CommonDatasetResolutionTests(unittest.TestCase):
 
     def test_resolves_validation_alias_and_case_variant(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            input_dir, target_dir = make_pair_layout(temp_dir, split="Val")
+            input_dir, target_dir = make_pair_layout(temp_dir, split="val")
 
             dataset = CommonDataset(temp_dir, split="validation")
 
