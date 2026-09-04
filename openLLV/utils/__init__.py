@@ -8,10 +8,11 @@ import sys
 import torch
 
 from .cancel import CancelSignal
-from .errors import TaskCancelled
+from .errors import EvaluateCancelled, TaskCancelled
 
 __all__ = [
     "CancelSignal",
+    "EvaluateCancelled",
     "TaskCancelled",
     "device_display_name",
     "log_info_env",
