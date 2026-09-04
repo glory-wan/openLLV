@@ -9,6 +9,8 @@ import numpy as np
 from tqdm import tqdm
 
 from openLLV.data.image_io import ImageReader
+from openLLV.utils.cancel import CancelSignal
+from openLLV.utils.errors import TaskCancelled
 
 from .algorithms import ImageInput, LLVEnhancer
 
@@ -182,6 +184,13 @@ class Predictor:
                 "output_name is only supported for single-image prediction."
             )
 
+        cancel = kwargs.pop("cancel", None)
+        if cancel is not None and not isinstance(cancel, CancelSignal):
+            raise TypeError(
+                "cancel must be a CancelSignal or None, got "
+                f"{type(cancel).__name__}."
+            )
+
         suffix = (
             self._normalize_suffix(output_ext)
             if output_ext is not None
@@ -198,6 +207,8 @@ class Predictor:
         iterator = tqdm(image_files, desc=f"Enhancing with {self.method_name}") if progress_bar else image_files
 
         for image_path in iterator:
+            if cancel is not None and cancel.is_cancelled():
+                raise TaskCancelled
             relative_path = image_path.relative_to(input_dir)
             if suffix is not None:
                 relative_path = relative_path.with_suffix(suffix)

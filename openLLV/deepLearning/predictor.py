@@ -23,6 +23,8 @@ from openLLV.data.coreDataset import predict_Trans
 from openLLV.data.image_io import ImageReader
 from openLLV.deepLearning.models import LLVModel
 from openLLV.utils import log_info_env
+from openLLV.utils.cancel import CancelSignal
+from openLLV.utils.errors import TaskCancelled
 
 
 ImageInput = Union[
@@ -370,6 +372,13 @@ class Predictor:
                 "output_name is only supported for single-image prediction."
             )
 
+        cancel = reader_kwargs.pop("cancel", None)
+        if cancel is not None and not isinstance(cancel, CancelSignal):
+            raise TypeError(
+                "cancel must be a CancelSignal or None, got "
+                f"{type(cancel).__name__}."
+            )
+
         suffix = (
             self._normalize_suffix(output_ext)
             if output_ext is not None
@@ -414,6 +423,8 @@ class Predictor:
         )
 
         for samples in iterator:
+            if cancel is not None and cancel.is_cancelled():
+                raise TaskCancelled
             sample_predictions: List[Tuple[Any, torch.Tensor]] = []
             same_shape = len({tuple(sample[2].shape) for sample in samples}) == 1
             if (
