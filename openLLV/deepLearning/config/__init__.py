@@ -64,7 +64,7 @@ DEFAULT_TRAIN_CONFIG: Dict[str, Any] = {
     "train": {
         "epochs": 100,
         "output_dir": None,
-        "save_every": 1,
+        "save_every": 0,
         "validate_every": 1,
         "log_every": 10,
         "grad_clip": None,

@@ -155,7 +155,7 @@ The defaults below are the generic Trainer defaults before a built-in YAML, cust
 | `scheduler_params` | `{}` | Scheduler constructor parameters; scheduler-specific keys are not listed here. |
 | `epochs` | `100` | Total number of training epochs; must be a positive integer. |
 | `output_dir` | `None` | Run-output directory; `None` resolves to `checkpoints/<Model>_<Dataset>`. |
-| `save_every` | `1` | Saves `last.pt` every this many epochs; must be a positive integer. |
+| `save_every` | `0` | Saves an additional `epoch_<epoch>.pt` every this many epochs; `0` disables these numbered snapshots. `last.pt` and `best.pt` are still updated after every epoch. |
 | `validate_every` | `1` | Runs validation every this many epochs when a validation loader exists; must be a positive integer. |
 | `log_every` | `10` | Updates the training progress display every this many batches; must be a positive integer. |
 | `grad_clip` | `None` | Maximum gradient norm; `None` disables clipping, otherwise the value must be greater than zero. |
@@ -180,6 +180,7 @@ checkpoints/<Model>_<Dataset>/
   checkpoints/
     best.pt
     last.pt
+    epoch_<epoch>.pt  # only when save_every > 0 and the interval is reached
   logs/
     history.json
   <Model>.yaml

@@ -48,7 +48,7 @@ openLLV.train(config=None, **kwargs)
 | `scheduler_params` | `Dict[str, Any]` | `{}` | Maps to `scheduler.params`. | Passed to the scheduler constructor. |
 | `epochs` | `int` | `100` | Maps to `train.epochs`. | Positive non-boolean integer. |
 | `output_dir` | `Optional[Union[str, Path]]` | `None` | Maps to `train.output_dir`. | `None` resolves to `checkpoints/<Model>_<Dataset>`. |
-| `save_every` | `int` | `1` | Maps to `train.save_every`. | Positive non-boolean integer. |
+| `save_every` | `int` | `0` | Maps to `train.save_every`; values above zero save an additional `epoch_<epoch>.pt` at that epoch interval. | Non-negative non-boolean integer; `0` disables numbered snapshots. |
 | `validate_every` | `int` | `1` | Maps to `train.validate_every`. | Positive non-boolean integer. |
 | `log_every` | `int` | `10` | Maps to `train.log_every`. | Positive non-boolean integer. |
 | `grad_clip` | `Optional[float]` | `None` | Maps to `train.grad_clip`. | When set, must be greater than `0`. |
@@ -89,7 +89,7 @@ If validation never produces a loss, `best_val_loss` remains positive infinity.
 - Configuration precedence is defaults, then `config`, then flat/nested `**kwargs` overrides.
 - Trainer owns device placement. It builds the model, datasets, loss, optimizer, scheduler, AMP scaler, output folders, and optional resume state before `train()` starts.
 - With two or more `device_ids`, Trainer uses single-machine, single-process `torch.nn.DataParallel`. The original model remains the optimizer/checkpoint owner, so saved state-dictionary keys do not gain a `module.` prefix.
-- `last.pt` is written every `save_every` epochs; `best.pt` is written when validation loss improves.
+- `last.pt` and `best.pt` are overwritten after every epoch, independently of `save_every`. If `save_every > 0`, an additional `epoch_<epoch>.pt` is saved whenever the epoch number is divisible by `save_every`.
 - Model config names such as `ZeroDCEPlusPlus` can resolve punctuation-bearing YAML files such as `ZeroDCE++.yaml`.
 
 ### Raises

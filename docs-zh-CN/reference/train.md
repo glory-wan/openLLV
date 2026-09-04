@@ -48,7 +48,7 @@ openLLV.train(config=None, **kwargs)
 | `scheduler_params` | `Dict[str, Any]` | `{}` | 映射到 `scheduler.params`。 | 传给 scheduler 构造器。 |
 | `epochs` | `int` | `100` | 映射到 `train.epochs`。 | 正的非布尔整数。 |
 | `output_dir` | `Optional[Union[str, Path]]` | `None` | 映射到 `train.output_dir`。 | `None` 解析为 `checkpoints/<Model>_<Dataset>`。 |
-| `save_every` | `int` | `1` | 映射到 `train.save_every`。 | 正的非布尔整数。 |
+| `save_every` | `int` | `0` | 映射到 `train.save_every`；大于零时，按照对应 epoch 间隔额外保存 `epoch_<epoch>.pt`。 | 非负、非布尔整数；`0` 关闭编号快照。 |
 | `validate_every` | `int` | `1` | 映射到 `train.validate_every`。 | 正的非布尔整数。 |
 | `log_every` | `int` | `10` | 映射到 `train.log_every`。 | 正的非布尔整数。 |
 | `grad_clip` | `Optional[float]` | `None` | 映射到 `train.grad_clip`。 | 设置时必须大于 `0`。 |
@@ -89,7 +89,7 @@ openLLV.train(config=None, **kwargs)
 - 配置优先级为默认值、`config`、平铺/嵌套 `**kwargs` 覆盖。
 - Trainer 管理设备；在 `train()` 开始前构建模型、数据集、loss、optimizer、scheduler、AMP scaler、输出目录及可选恢复状态。
 - `device_ids` 含两个或更多序号时，Trainer 使用单机单进程 `torch.nn.DataParallel`。原始模型仍负责优化和 checkpoint，因此保存的状态字典键不会增加 `module.` 前缀。
-- 每 `save_every` epoch 写入 `last.pt`；验证 loss 改善时写入 `best.pt`。
+- 每个 epoch 后都会覆盖写入 `last.pt` 和 `best.pt`，与 `save_every` 无关。`save_every > 0` 时，每当 epoch 序号能被它整除，额外保存 `epoch_<epoch>.pt`。
 - `ZeroDCEPlusPlus` 等模型配置名可解析带标点的 `ZeroDCE++.yaml`。
 
 ### Raises

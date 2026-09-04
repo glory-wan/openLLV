@@ -47,7 +47,7 @@ train:
   epochs: 100
   device: null
   output_dir: null
-  save_every: 1
+  save_every: 0
   validate_every: 1
   log_every: 10
   grad_clip: null

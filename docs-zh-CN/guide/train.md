@@ -155,7 +155,7 @@ result = llv.train(
 | `scheduler_params` | `{}` | 调度器构造参数；调度器专属参数不在此列出。 |
 | `epochs` | `100` | 总训练轮数；必须为正整数。 |
 | `output_dir` | `None` | 训练输出目录；`None` 解析为 `checkpoints/<Model>_<Dataset>`。 |
-| `save_every` | `1` | 每隔多少个 epoch 保存一次 `last.pt`；必须为正整数。 |
+| `save_every` | `0` | 每隔多少个 epoch 额外保存一个 `epoch_<epoch>.pt`；`0` 关闭此类编号快照。`last.pt` 和 `best.pt` 仍会在每个 epoch 后更新。 |
 | `validate_every` | `1` | 存在验证 loader 时每隔多少个 epoch 验证一次；必须为正整数。 |
 | `log_every` | `10` | 每隔多少个 batch 更新一次训练进度显示；必须为正整数。 |
 | `grad_clip` | `None` | 最大梯度范数；`None` 关闭裁剪，否则必须大于零。 |
@@ -180,6 +180,7 @@ checkpoints/<Model>_<Dataset>/
   checkpoints/
     best.pt
     last.pt
+    epoch_<epoch>.pt  # 仅在 save_every > 0 且到达间隔时生成
   logs/
     history.json
   <Model>.yaml

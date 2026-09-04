@@ -76,7 +76,7 @@ train:
   device: null
   device_ids: null
   output_dir: null
-  save_every: 1
+  save_every: 0
   validate_every: 1
   log_every: 10
   grad_clip: 1.0
@@ -109,7 +109,7 @@ Set `name: null` to disable scheduling. Otherwise `params` is forwarded to the s
 
 ### `train`
 
-This section controls epochs, runtime device, output location, validation/checkpoint frequency, mixed precision, gradient clipping, reproducibility, and resume behavior. A null device resolves to CUDA when available, then MPS when available, and otherwise CPU. Set `device_ids` to two or more CUDA indices, such as `[0, 1]`, for single-machine, single-process `torch.nn.DataParallel`; its first entry is the primary device and must match an explicitly indexed `device`.
+This section controls epochs, runtime device, output location, validation/checkpoint frequency, mixed precision, gradient clipping, reproducibility, and resume behavior. A null device resolves to CUDA when available, then MPS when available, and otherwise CPU. Set `device_ids` to two or more CUDA indices, such as `[0, 1]`, for single-machine, single-process `torch.nn.DataParallel`; its first entry is the primary device and must match an explicitly indexed `device`. `last.pt` and `best.pt` are updated after every epoch; `save_every: 0` disables additional numbered snapshots, while a positive value saves `epoch_<epoch>.pt` at that interval.
 
 ## Default Values and Merge Helpers
 

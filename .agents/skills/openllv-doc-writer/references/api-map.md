@@ -96,6 +96,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 | `resume` / `resume_path` / `strict_resume` | `train.*` |
 
 `train()` 返回字典含 history、best_val_loss、checkpoint_dir。
+`last.pt` 与 `best.pt` 每个 epoch 都覆盖保存；`save_every` 默认 `0`，大于 `0` 时按间隔额外保存 `epoch_<epoch>.pt`。
 
 ## `evaluate` 的 kwargs 路由
 

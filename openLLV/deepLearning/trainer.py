@@ -363,8 +363,12 @@ class Trainer:
                 raise TypeError(f"config.data.{key} must be a dictionary.")
 
         train_cfg = self.config["train"]
-        for key in ("epochs", "save_every", "validate_every", "log_every"):
+        for key in ("epochs", "validate_every", "log_every"):
             self._validate_positive_int(f"train.{key}", train_cfg.get(key))
+        self._validate_non_negative_int(
+            "train.save_every",
+            train_cfg.get("save_every"),
+        )
         grad_clip = train_cfg.get("grad_clip")
         if grad_clip is not None and float(grad_clip) <= 0:
             raise ValueError("config.train.grad_clip must be greater than 0.")
@@ -1337,11 +1341,12 @@ class Trainer:
                 if is_best:
                     self.best_val_loss = val_loss
 
-                if epoch % int(self.config["train"]["save_every"]) == 0:
-                    self.save_checkpoint("last.pt", epoch, val_loss)
+                self.save_checkpoint("last.pt", epoch, val_loss)
+                self.save_checkpoint("best.pt", epoch, val_loss)
 
-                if is_best:
-                    self.save_checkpoint("best.pt", epoch, val_loss)
+                save_every = int(self.config["train"]["save_every"])
+                if save_every > 0 and epoch % save_every == 0:
+                    self.save_checkpoint(f"epoch_{epoch}.pt", epoch, val_loss)
 
                 print(
                     f"Epoch {epoch}/{epochs} | train_loss={train_loss:.6f} "

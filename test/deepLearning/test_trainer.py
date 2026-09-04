@@ -151,7 +151,7 @@ def trainer_config(
         "train": {
             "epochs": epochs,
             "output_dir": str(output_dir),
-            "save_every": 1,
+            "save_every": 0,
             "validate_every": 1,
             "log_every": 1,
             "grad_clip": None,
@@ -174,6 +174,7 @@ class TrainerConfigTests(unittest.TestCase):
         self.assertIsNone(first["data"]["resize"])
         self.assertEqual(first["optimizer"]["lr"], 1e-4)
         self.assertEqual(first["train"]["epochs"], 100)
+        self.assertEqual(first["train"]["save_every"], 0)
         self.assertIsNone(first["train"]["device_ids"])
 
         first["model"]["params"]["width"] = 4
@@ -376,6 +377,32 @@ class TrainerConstructionTests(unittest.TestCase):
 
 
 class TrainerExecutionTests(unittest.TestCase):
+    def test_checkpoint_aliases_and_periodic_epoch_snapshots(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "snapshots"
+            config = trainer_config(output_dir, epochs=3)
+            config["train"]["save_every"] = 2
+
+            Trainer(config).train()
+
+            checkpoint_dir = output_dir / "checkpoints"
+            self.assertTrue((checkpoint_dir / "last.pt").is_file())
+            self.assertTrue((checkpoint_dir / "best.pt").is_file())
+            self.assertTrue((checkpoint_dir / "epoch_2.pt").is_file())
+            self.assertFalse((checkpoint_dir / "epoch_1.pt").exists())
+            self.assertFalse((checkpoint_dir / "epoch_3.pt").exists())
+
+            last = torch.load(
+                checkpoint_dir / "last.pt",
+                map_location="cpu",
+            )
+            best = torch.load(
+                checkpoint_dir / "best.pt",
+                map_location="cpu",
+            )
+            self.assertEqual(last["epoch"], 3)
+            self.assertEqual(best["epoch"], 3)
+
     def test_paired_training_validation_scheduler_and_outputs(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir) / "paired"
@@ -406,6 +433,9 @@ class TrainerExecutionTests(unittest.TestCase):
             self.assertAlmostEqual(trainer.optimizer.param_groups[0]["lr"], 0.025)
             self.assertTrue((output_dir / "checkpoints" / "last.pt").is_file())
             self.assertTrue((output_dir / "checkpoints" / "best.pt").is_file())
+            self.assertFalse(
+                any((output_dir / "checkpoints").glob("epoch_*.pt"))
+            )
             self.assertTrue((output_dir / "logs" / "history.json").is_file())
             self.assertTrue((output_dir / "TrainerGrandchildModel.yaml").is_file())
 
