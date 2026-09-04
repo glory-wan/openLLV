@@ -197,3 +197,7 @@ result = llv.train(
 ```
 
 Use `strict_resume=False` only when intentionally loading a partially compatible state dictionary.
+
+## External Cancellation
+
+Pass a `CancelSignal` through the `cancel` keyword and call `signal.cancel()` from another thread to stop training gracefully. Training returns `"stopped": True`, discards the interrupted epoch, and keeps a resume-able `last.pt` checkpoint.

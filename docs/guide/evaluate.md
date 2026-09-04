@@ -106,3 +106,7 @@ results = llv.evaluate(
     metrics=["PSNR", "SSIM"],
 )
 ```
+
+## External Cancellation
+
+Pass a `CancelSignal` through the `cancel` keyword and call `signal.cancel()` from another thread to pause evaluation. Evaluation stops at the current image and returns the partial results for the images already evaluated, with `"cancelled": True`.

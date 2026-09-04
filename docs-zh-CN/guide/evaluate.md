@@ -107,3 +107,7 @@ results = llv.evaluate(
 )
 ```
 
+## 外部取消
+
+通过 `cancel` 关键字传入一个 `CancelSignal`，并在另一个线程调用 `signal.cancel()` 即可暂停评估。评估会在当前图像处停止，返回已评估图像的部分结果，并带有 `"cancelled": True` 标记。
+
