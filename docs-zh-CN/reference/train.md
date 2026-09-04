@@ -57,6 +57,7 @@ openLLV.train(config=None, **kwargs)
 | `strict_resume` | `bool` | `True` | 映射到 `train.strict_resume`。 | 控制 state dictionary 严格加载。 |
 | `seed` | `Optional[int]` | `42` | 映射到 `train.seed`；`None` 不设置随机种子。 | 整数或 `None`；拒绝布尔值。 |
 | `device` | `Union[str, torch.device]` | 最佳可用设备 | 映射到 `train.device`；默认依次选择 CUDA、MPS、CPU。 | 请求不可用 CUDA/MPS 抛 `RuntimeError`。 |
+| `device_ids` | `Optional[Union[List[int], Tuple[int, ...]]]` | `None` | 映射到 `train.device_ids`；两个或更多 CUDA 序号启用单进程 `DataParallel`。 | 必须是非空、无重复、非负且可用的 CUDA 序号；第一项必须与显式带序号的 `device` 一致。 |
 | `progress_bar` | `bool` | `True` | 映射到 `train.progress_bar`。 | 控制 tqdm 训练/验证进度条。 |
 | `model`、`loss`、`optimizer`、`scheduler`、`train`（字典形式） | `Dict[str, Any]` | 对应默认节 | 这些名称的值为字典时，直接合并进对应嵌套节，而非作为平铺别名。 | 合并后各节必须为字典。 |
 
@@ -87,6 +88,7 @@ openLLV.train(config=None, **kwargs)
 
 - 配置优先级为默认值、`config`、平铺/嵌套 `**kwargs` 覆盖。
 - Trainer 管理设备；在 `train()` 开始前构建模型、数据集、loss、optimizer、scheduler、AMP scaler、输出目录及可选恢复状态。
+- `device_ids` 含两个或更多序号时，Trainer 使用单机单进程 `torch.nn.DataParallel`。原始模型仍负责优化和 checkpoint，因此保存的状态字典键不会增加 `module.` 前缀。
 - 每 `save_every` epoch 写入 `last.pt`；验证 loss 改善时写入 `best.pt`。
 - `ZeroDCEPlusPlus` 等模型配置名可解析带标点的 `ZeroDCE++.yaml`。
 
@@ -94,10 +96,10 @@ openLLV.train(config=None, **kwargs)
 
 | Exception | Condition |
 | --- | --- |
-| `TypeError` | config/节类型非法、未知平铺键、模型类/输入非法、seed 非法或训练对象不兼容。 |
-| `ValueError` | 缺少模型/数据集根目录、正数/非负设置非法、学习率/梯度裁剪非正或设备文本非法。 |
+| `TypeError` | config/节类型非法、未知平铺键、模型类/输入非法、seed/设备序号类型非法或训练对象不兼容。 |
+| `ValueError` | 缺少模型/数据集根目录、正数/非负设置非法、学习率/梯度裁剪非正、设备文本非法或 CUDA 设备序号非法/不可用。 |
 | `FileNotFoundError` | YAML/checkpoint 路径或内置配置无法解析。 |
-| `RuntimeError` | 显式请求的 CUDA/MPS 不可用。 |
+| `RuntimeError` | 显式请求的 CUDA/MPS 不可用，或在非 CUDA 设备上使用了 `device_ids`。 |
 | `FloatingPointError` | 计算的 loss 为 NaN 或无穷。 |
 
 ## Examples
@@ -124,6 +126,16 @@ trainer = llv.Trainer(
     amp=True,
 )
 result = trainer.train()
+```
+
+```python
+result = llv.train(
+    "ZeroDCE",
+    root_dir="data/LOL-v1",
+    batch_size=8,
+    device="cuda",
+    device_ids=[0, 1],
+)
 ```
 
 ## Related

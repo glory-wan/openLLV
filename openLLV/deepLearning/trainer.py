@@ -76,6 +76,25 @@ def _create_grad_scaler(enabled: bool):
     return torch.cuda.amp.GradScaler(enabled=enabled)
 
 
+class _TrainerDataParallel(nn.DataParallel):
+    """DataParallel variant that preserves standardized model metadata."""
+
+    def gather(self, outputs: Any, output_device: Any) -> Any:
+        if outputs and all(
+            isinstance(output, Mapping) and "meta" in output
+            for output in outputs
+        ):
+            metadata = outputs[0]["meta"]
+            outputs = [
+                {key: value for key, value in output.items() if key != "meta"}
+                for output in outputs
+            ]
+            gathered = super().gather(outputs, output_device)
+            gathered["meta"] = metadata
+            return gathered
+        return super().gather(outputs, output_device)
+
+
 class Trainer:
     """Configuration-driven trainer for every concrete ``LLVModel``.
 
@@ -119,6 +138,12 @@ class Trainer:
         self.device = self._resolve_device(
             self.config["train"].get("device") or get_default_device()
         )
+        self.device_ids = self._resolve_device_ids(
+            self.config["train"].get("device_ids"),
+            self.device,
+        )
+        if self.device_ids:
+            self.device = torch.device("cuda", self.device_ids[0])
 
         self.start_epoch = 1
         self.best_val_loss = float("inf")
@@ -129,6 +154,7 @@ class Trainer:
         self._set_seed(self.config["train"].get("seed"))
 
         self.model = self._build_model()
+        self.training_model = self._build_training_model()
         self._resolve_output_dir()
         self.checkpoint_dir = self.output_dir / "checkpoints"
         self.log_dir = self.output_dir / "logs"
@@ -258,6 +284,7 @@ class Trainer:
             "strict_resume": ("train", "strict_resume"),
             "seed": ("train", "seed"),
             "device": ("train", "device"),
+            "device_ids": ("train", "device_ids"),
             "progress_bar": ("train", "progress_bar"),
         }
 
@@ -375,6 +402,53 @@ class Trainer:
         return resolved
 
     @staticmethod
+    def _resolve_device_ids(
+        device_ids: Any,
+        device: torch.device,
+    ) -> Optional[list[int]]:
+        """Validate CUDA device IDs used for data-parallel training."""
+        if device_ids is None:
+            return None
+        if not isinstance(device_ids, (list, tuple)):
+            raise TypeError("config.train.device_ids must be a list or tuple.")
+        if not device_ids:
+            raise ValueError("config.train.device_ids must not be empty.")
+        if any(
+            isinstance(device_id, bool) or not isinstance(device_id, int)
+            for device_id in device_ids
+        ):
+            raise TypeError(
+                "config.train.device_ids must contain only integer CUDA IDs."
+            )
+
+        resolved = list(device_ids)
+        if any(device_id < 0 for device_id in resolved):
+            raise ValueError(
+                "config.train.device_ids must contain non-negative CUDA IDs."
+            )
+        if len(set(resolved)) != len(resolved):
+            raise ValueError("config.train.device_ids must not contain duplicates.")
+        if device.type != "cuda":
+            raise RuntimeError("config.train.device_ids requires a CUDA device.")
+
+        device_count = torch.cuda.device_count()
+        unavailable = [
+            device_id
+            for device_id in resolved
+            if device_id >= device_count
+        ]
+        if unavailable:
+            raise ValueError(
+                f"CUDA device IDs {unavailable} are unavailable; "
+                f"detected {device_count} CUDA device(s)."
+            )
+        if device.index is not None and device.index != resolved[0]:
+            raise ValueError(
+                "config.train.device must match the first device_ids entry."
+            )
+        return resolved
+
+    @staticmethod
     def _safe_name(value: Any) -> str:
         """Convert a value to a filesystem-safe run name.
 
@@ -440,6 +514,8 @@ class Trainer:
         print(f"{'Model':<20}: {self.model.__class__.__name__:<20}")
         print(f"{'Loss':<20}: {self.criterion.__class__.__name__:<20}")
         print(f"{'Training device':<20}: {device_display_name(device=self.device):<20}")
+        if self.device_ids and len(self.device_ids) > 1:
+            print(f"{'CUDA device IDs':<20}: {str(self.device_ids):<20}")
         print(f"{'Optimizer':<20}: {self.optimizer.__class__.__name__:<20} ")
         print(f"{'lr':<20}: {self.optimizer.param_groups[0]['lr']:<20}")
         scheduler_name = (
@@ -518,6 +594,16 @@ class Trainer:
         model.to(self.device)
         model.train_mode()
         return model
+
+    def _build_training_model(self) -> nn.Module:
+        """Wrap the model for single-process multi-GPU training when requested."""
+        if not self.device_ids or len(self.device_ids) == 1:
+            return self.model
+        return _TrainerDataParallel(
+            self.model,
+            device_ids=self.device_ids,
+            output_device=self.device_ids[0],
+        )
 
     @staticmethod
     def _resolve_dataset_class(
@@ -1179,12 +1265,12 @@ class Trainer:
 
         try:
             if paired_forward:
-                output = self.model(
+                output = self.training_model(
                     input_tensor,
                     paired_image=target_tensor,
                 )
             else:
-                output = self.model(input_tensor)
+                output = self.training_model(input_tensor)
         finally:
             if had_mode:
                 self.model.config["mode"] = original_mode

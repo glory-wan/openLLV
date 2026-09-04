@@ -94,6 +94,22 @@ result = trainer.train()
 
 返回的字典包含训练历史、最佳验证损失以及检查点目录路径。训练时间戳保存在检查点和已保存的训练配置中。
 
+## 多 GPU 训练
+
+通过 `device_ids` 传入两个或更多 CUDA 序号，即可启用单进程数据并行训练：
+
+```python
+result = llv.train(
+    "ZeroDCE",
+    root_dir="datasets/my_dataset",
+    batch_size=8,
+    device="cuda",
+    device_ids=[0, 1],
+)
+```
+
+第一个序号是模型、损失函数及汇聚输出所在的主设备；`torch.nn.DataParallel` 会把每个 batch 分发到列出的 GPU。如果 `device` 显式包含序号，该序号必须等于 `device_ids` 的第一项。`None` 保持原有单设备行为；仅含一项的列表只选择对应 CUDA 设备，不启用并行。这是单机单进程并行，不是分布式或多节点训练。
+
 ## Trainer 参数
 
 下表默认值是内置 YAML、自定义 YAML 或配置字典覆盖之前的 Trainer 通用默认值。`model_params`、`loss_params`、`optimizer_params`、`scheduler_params` 及数据集参数字典中的组件专属参数不会在此展开。
@@ -149,6 +165,7 @@ result = trainer.train()
 | `strict_resume` | `True` | 恢复训练时是否严格加载模型状态字典。 |
 | `seed` | `42` | Python、NumPy 和 PyTorch 随机种子；`None` 表示不设置种子。 |
 | `device` | 依次选择 CUDA、MPS、CPU | 未显式指定时从可用后端中选择最佳训练设备。 |
+| `device_ids` | `None` | 用于单进程数据并行训练的有序 CUDA 设备序号；两个或更多序号启用 `DataParallel`，第一项为主设备。 |
 | `progress_bar` | `True` | 是否显示训练和验证 tqdm 进度条。 |
 | `train` | 默认 `train` 节 | 合并在通用训练默认值之上的完整嵌套 train 节字典。 |
 

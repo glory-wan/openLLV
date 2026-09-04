@@ -94,6 +94,22 @@ result = trainer.train()
 
 The returned dictionary contains the history, best validation loss, and checkpoint-directory path. Training timestamps are stored in the checkpoint and saved training configuration.
 
+## Multi-GPU Training
+
+Pass two or more CUDA indices through `device_ids` to enable single-process data-parallel training:
+
+```python
+result = llv.train(
+    "ZeroDCE",
+    root_dir="datasets/my_dataset",
+    batch_size=8,
+    device="cuda",
+    device_ids=[0, 1],
+)
+```
+
+The first index is the primary device for the model, loss, and gathered outputs; each batch is split across the listed GPUs by `torch.nn.DataParallel`. If `device` includes an explicit index, it must match the first `device_ids` entry. `None` keeps the existing single-device behavior, while a one-item list selects that CUDA device without enabling parallelism. This is single-machine, single-process parallelism, not distributed or multi-node training.
+
 ## Trainer Parameters
 
 The defaults below are the generic Trainer defaults before a built-in YAML, custom YAML, or configuration dictionary overrides them. Component-specific keys inside `model_params`, `loss_params`, `optimizer_params`, `scheduler_params`, and dataset parameter dictionaries are intentionally not expanded.
@@ -149,6 +165,7 @@ The defaults below are the generic Trainer defaults before a built-in YAML, cust
 | `strict_resume` | `True` | Controls strict model state-dictionary loading during resume. |
 | `seed` | `42` | Python, NumPy, and PyTorch random seed; `None` disables seed setup. |
 | `device` | CUDA, then MPS, then CPU | Training device selected from the best available backend unless explicitly provided. |
+| `device_ids` | `None` | Ordered CUDA device indices for single-process data-parallel training; two or more entries enable `DataParallel`, and the first entry is the primary device. |
 | `progress_bar` | `True` | Enables tqdm progress bars for training and validation. |
 | `train` | Default `train` section | Complete nested training-section dictionary merged over the generic training defaults. |
 

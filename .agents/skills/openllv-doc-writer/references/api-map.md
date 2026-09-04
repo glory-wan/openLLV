@@ -92,7 +92,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 | `optimizer` / `optimizer_name` / `lr` / `optimizer_params` | `optimizer.*` |
 | `scheduler` / `scheduler_name` / `scheduler_params` | `scheduler.*`（`name: null` 关闭） |
 | `epochs` / `output_dir` / `save_every` / `validate_every` / `log_every` | `train.*` |
-| `grad_clip` / `amp` / `seed` / `device` / `progress_bar` | `train.*` |
+| `grad_clip` / `amp` / `seed` / `device` / `device_ids` / `progress_bar` | `train.*` |
 | `resume` / `resume_path` / `strict_resume` | `train.*` |
 
 `train()` 返回字典含 history、best_val_loss、checkpoint_dir。

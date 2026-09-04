@@ -57,6 +57,7 @@ openLLV.train(config=None, **kwargs)
 | `strict_resume` | `bool` | `True` | Maps to `train.strict_resume`. | Controls state-dictionary strictness. |
 | `seed` | `Optional[int]` | `42` | Maps to `train.seed`; `None` disables seed setup. | Integer or `None`; booleans are rejected. |
 | `device` | `Union[str, torch.device]` | best available device | Maps to `train.device`; default preference is CUDA, then MPS, then CPU. | Requesting unavailable CUDA/MPS raises `RuntimeError`. |
+| `device_ids` | `Optional[Union[List[int], Tuple[int, ...]]]` | `None` | Maps to `train.device_ids`; two or more CUDA indices enable single-process `DataParallel`. | Must be non-empty, unique, non-negative, available CUDA indices; the first entry must match an explicitly indexed `device`. |
 | `progress_bar` | `bool` | `True` | Maps to `train.progress_bar`. | Controls tqdm training/validation bars. |
 | `model`, `loss`, `optimizer`, `scheduler`, `train` as dictionaries | `Dict[str, Any]` | corresponding default section | A dictionary under one of these names merges directly into that nested section instead of acting as its flat alias. | Section values must be dictionaries after merging. |
 
@@ -87,6 +88,7 @@ If validation never produces a loss, `best_val_loss` remains positive infinity.
 
 - Configuration precedence is defaults, then `config`, then flat/nested `**kwargs` overrides.
 - Trainer owns device placement. It builds the model, datasets, loss, optimizer, scheduler, AMP scaler, output folders, and optional resume state before `train()` starts.
+- With two or more `device_ids`, Trainer uses single-machine, single-process `torch.nn.DataParallel`. The original model remains the optimizer/checkpoint owner, so saved state-dictionary keys do not gain a `module.` prefix.
 - `last.pt` is written every `save_every` epochs; `best.pt` is written when validation loss improves.
 - Model config names such as `ZeroDCEPlusPlus` can resolve punctuation-bearing YAML files such as `ZeroDCE++.yaml`.
 
@@ -94,10 +96,10 @@ If validation never produces a loss, `best_val_loss` remains positive infinity.
 
 | Exception | Condition |
 | --- | --- |
-| `TypeError` | Invalid config/section type, unknown flat key, invalid model class/input, invalid seed, or incompatible training objects. |
-| `ValueError` | Missing model/dataset root, invalid positive/non-negative settings, non-positive learning rate/gradient clip, or invalid device text. |
+| `TypeError` | Invalid config/section type, unknown flat key, invalid model class/input, invalid seed/device-ID type, or incompatible training objects. |
+| `ValueError` | Missing model/dataset root, invalid positive/non-negative settings, non-positive learning rate/gradient clip, invalid device text, or invalid/unavailable CUDA device IDs. |
 | `FileNotFoundError` | YAML/checkpoint path or built-in configuration cannot be resolved. |
-| `RuntimeError` | Explicit CUDA/MPS device is unavailable. |
+| `RuntimeError` | Explicit CUDA/MPS device is unavailable, or `device_ids` is used with a non-CUDA device. |
 | `FloatingPointError` | A computed loss is NaN or infinite. |
 
 ## Examples
@@ -124,6 +126,16 @@ trainer = llv.Trainer(
     amp=True,
 )
 result = trainer.train()
+```
+
+```python
+result = llv.train(
+    "ZeroDCE",
+    root_dir="data/LOL-v1",
+    batch_size=8,
+    device="cuda",
+    device_ids=[0, 1],
+)
 ```
 
 ## Related

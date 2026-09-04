@@ -24,6 +24,7 @@ from openLLV.deepLearning.config import (
 )
 from openLLV.deepLearning.loss import BaseLoss
 from openLLV.deepLearning.models import LLVModel, ZeroDCE
+from openLLV.deepLearning.trainer import _TrainerDataParallel
 
 
 class TrainerTinyPairedDataset(BaseDataset):
@@ -173,6 +174,7 @@ class TrainerConfigTests(unittest.TestCase):
         self.assertIsNone(first["data"]["resize"])
         self.assertEqual(first["optimizer"]["lr"], 1e-4)
         self.assertEqual(first["train"]["epochs"], 100)
+        self.assertIsNone(first["train"]["device_ids"])
 
         first["model"]["params"]["width"] = 4
         self.assertNotIn("width", second["model"]["params"])
@@ -216,6 +218,7 @@ class TrainerConfigTests(unittest.TestCase):
                 "loss_name": "l1",
                 "lr": 0.01,
                 "epochs": 4,
+                "device_ids": [0, 1],
                 "progress_bar": False,
             }
         )
@@ -226,6 +229,29 @@ class TrainerConfigTests(unittest.TestCase):
         self.assertEqual(flat["data"]["train_target_dir"], "train/target")
         self.assertEqual(flat["loss"]["name"], "l1")
         self.assertEqual(flat["train"]["epochs"], 4)
+        self.assertEqual(flat["train"]["device_ids"], [0, 1])
+
+    def test_device_ids_are_validated_against_cuda_device(self):
+        with patch("torch.cuda.device_count", return_value=3):
+            self.assertEqual(
+                Trainer._resolve_device_ids([1, 2], torch.device("cuda")),
+                [1, 2],
+            )
+            self.assertEqual(
+                Trainer._resolve_device_ids((1,), torch.device("cuda:1")),
+                [1],
+            )
+            with self.assertRaisesRegex(ValueError, "first device_ids"):
+                Trainer._resolve_device_ids([0, 1], torch.device("cuda:1"))
+            with self.assertRaisesRegex(ValueError, "unavailable"):
+                Trainer._resolve_device_ids([3], torch.device("cuda"))
+
+        with self.assertRaisesRegex(RuntimeError, "requires a CUDA device"):
+            Trainer._resolve_device_ids([0], torch.device("cpu"))
+        with self.assertRaisesRegex(ValueError, "duplicates"):
+            Trainer._resolve_device_ids([0, 0], torch.device("cuda"))
+        with self.assertRaisesRegex(TypeError, "list or tuple"):
+            Trainer._resolve_device_ids("0,1", torch.device("cuda"))
 
     def test_yaml_loader_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -273,6 +299,44 @@ class TrainerConstructionTests(unittest.TestCase):
                     )
                     self.assertNotIn("device", trainer.model.config)
                     self.assertEqual(trainer.model.config["mode"], "train")
+                    self.assertIs(trainer.training_model, trainer.model)
+
+    def test_multiple_device_ids_wrap_only_the_training_forward_model(self):
+        trainer = Trainer.__new__(Trainer)
+        trainer.model = TrainerToyModel()
+        trainer.device_ids = [0, 1]
+        wrapped = nn.Module()
+
+        with patch(
+            "openLLV.deepLearning.trainer._TrainerDataParallel",
+            return_value=wrapped,
+        ) as parallel:
+            self.assertIs(trainer._build_training_model(), wrapped)
+
+        parallel.assert_called_once_with(
+            trainer.model,
+            device_ids=[0, 1],
+            output_device=0,
+        )
+
+    def test_data_parallel_preserves_primary_replica_metadata(self):
+        parallel = _TrainerDataParallel.__new__(_TrainerDataParallel)
+        outputs = [
+            {"pred": torch.tensor([1.0]), "aux": {}, "meta": {"stage": 1}},
+            {"pred": torch.tensor([2.0]), "aux": {}, "meta": {"stage": 2}},
+        ]
+        gathered_without_meta = {"pred": torch.tensor([1.0, 2.0]), "aux": {}}
+
+        with patch.object(
+            nn.DataParallel,
+            "gather",
+            return_value=gathered_without_meta,
+        ) as gather:
+            gathered = parallel.gather(outputs, 0)
+
+        self.assertEqual(gathered["meta"], {"stage": 1})
+        self.assertNotIn("meta", gather.call_args.args[0][0])
+        self.assertNotIn("meta", gather.call_args.args[0][1])
 
     def test_model_checkpoint_path_reconstructs_registered_model(self):
         with tempfile.TemporaryDirectory() as temp_dir:

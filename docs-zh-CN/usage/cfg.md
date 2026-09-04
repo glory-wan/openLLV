@@ -74,6 +74,7 @@ scheduler:
 train:
   epochs: 100
   device: null
+  device_ids: null
   output_dir: null
   save_every: 1
   validate_every: 1
@@ -108,7 +109,7 @@ train:
 
 ### `train`
 
-该分区控制训练轮数、运行设备、输出位置、验证与检查点频率、混合精度、梯度裁剪、可复现性和恢复训练行为。设备为 null 时，依次选择可用的 CUDA、MPS，最后回退到 CPU。
+该分区控制训练轮数、运行设备、输出位置、验证与检查点频率、混合精度、梯度裁剪、可复现性和恢复训练行为。设备为 null 时，依次选择可用的 CUDA、MPS，最后回退到 CPU。将 `device_ids` 设置为两个或更多 CUDA 序号（如 `[0, 1]`）即可启用单机单进程 `torch.nn.DataParallel`；第一项为主设备，并且必须与显式带序号的 `device` 一致。
 
 ## 默认值与合并辅助函数
 

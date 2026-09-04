@@ -73,6 +73,7 @@ DEFAULT_TRAIN_CONFIG: Dict[str, Any] = {
         "strict_resume": True,
         "seed": 42,
         "device": get_default_device(),
+        "device_ids": None,
         "progress_bar": True,
     },
 }
