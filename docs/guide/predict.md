@@ -98,6 +98,8 @@ Raw upstream state dictionaries do not contain the openLLV model metadata. Creat
 
 ## Directory Prediction
 
+For non-empty input directories, both backends print `Input path` and `Output path` as absolute paths before processing. With `save=False`, the output line shows `Not saved (save=False)` instead. These messages also appear when `progress_bar=False`.
+
 ```python
 saved_paths = llv.predict(
     "ZeroDCE",

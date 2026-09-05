@@ -202,6 +202,8 @@ class Predictor:
             return []
 
         output_root = Path(output_dir) if output_dir is not None else self.output_dir
+        print(f"Input path: {input_dir.resolve()}")
+        print(f"Output path: {output_root.resolve() if save else 'Not saved (save=False)'}")
         saved_paths: List[Path] = []
         output_images: List[np.ndarray] = []
         iterator = tqdm(image_files, desc=f"Enhancing with {self.method_name}") if progress_bar else image_files

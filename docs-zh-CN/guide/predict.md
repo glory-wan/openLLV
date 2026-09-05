@@ -98,6 +98,8 @@ enhanced, saved_path = llv.predict(
 
 ## 目录预测
 
+输入目录包含可处理图像时，两个后端都会在处理前打印绝对路径形式的 `Input path` 和 `Output path`。`save=False` 时，输出行显示 `Not saved (save=False)`。这些信息在 `progress_bar=False` 时也会显示。
+
 ```python
 saved_paths = llv.predict(
     "ZeroDCE",

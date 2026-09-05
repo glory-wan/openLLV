@@ -69,6 +69,8 @@ openLLV.predict(method, source, output=None, **kwargs)
 
 ### 目录输出约定
 
+- 输入目录包含可处理图像时，两个后端在处理前打印一次输入/输出目录的绝对路径，不受 `progress_bar` 控制。`save=False` 时，输出行显示 `Output path: Not saved (save=False)`。
+
 - `output_name=None` 且 `output_ext=None` 时，逐字符复用每个源相对路径：文件名、后缀及其字母大小写均不改变。
 - 显式 `output_ext` 只替换全部源后缀，并保留参数后缀的大小写；文件主名与相对子目录不变。
 - `output_name` 仅支持单图。目录输入传任何非 `None` 值都会抛 `ValueError`，不会继续转发给模型、读取器或算法。

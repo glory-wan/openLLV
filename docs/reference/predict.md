@@ -69,6 +69,8 @@ Registered names are matched case-insensitively (and punctuation-insensitively f
 
 ### Directory output contract
 
+- For non-empty input directories, both backends print absolute input/output directory paths once before processing, independently of `progress_bar`. With `save=False`, the output line reads `Output path: Not saved (save=False)`.
+
 - With `output_name=None` and `output_ext=None`, every relative source path is reused exactly: the filename, suffix, and their letter case are unchanged.
 - An explicit `output_ext` replaces every source suffix while preserving the supplied suffix case; it does not rename stems or relative directories.
 - `output_name` is single-image-only. Passing any non-`None` value for directory input raises `ValueError` instead of forwarding it to a model, reader, or algorithm.

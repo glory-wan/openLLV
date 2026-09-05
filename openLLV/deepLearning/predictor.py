@@ -392,6 +392,8 @@ class Predictor:
         output_root = (
             Path(output_dir) if output_dir is not None else self.output_dir
         )
+        print(f"Input path: {input_dir.resolve()}")
+        print(f"Output path: {output_root.resolve() if save else 'Not saved (save=False)'}")
         saved_paths: List[Optional[Path]] = [None] * len(image_files)
         output_images: List[Optional[Image.Image]] = [None] * len(image_files)
         transformer = (
