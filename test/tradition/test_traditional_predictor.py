@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +15,7 @@ from PIL import Image
 import openLLV.tradition as tradition_package
 from openLLV.tradition import Predictor
 from openLLV.tradition.algorithms import LLVEnhancer
+from openLLV.utils import CancelSignal, TaskCancelled
 
 
 class PredictorTestEnhancer(LLVEnhancer):
@@ -342,6 +345,42 @@ class PredictorBatchTests(unittest.TestCase):
             save_rgb(file_path)
             with self.assertRaisesRegex(NotADirectoryError, "must be a directory"):
                 Predictor(method="predictor-test").predict_batch(file_path)
+
+    def test_batch_prediction_cancel_raises_and_keeps_saved_images(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "inputs"
+            output_dir = root / "outputs"
+            for index in range(12):
+                save_rgb(input_dir / f"A{index}.png")
+
+            signal = CancelSignal()
+            raised = []
+
+            def run_batch():
+                try:
+                    Predictor(method="predictor-test").predict_batch(
+                        input_dir,
+                        output_dir=output_dir,
+                        progress_bar=False,
+                        cancel=signal,
+                    )
+                except TaskCancelled as error:
+                    raised.append(error)
+
+            worker = threading.Thread(target=run_batch, daemon=True)
+            worker.start()
+            deadline = time.time() + 30
+            while time.time() < deadline and not list(output_dir.glob("*.png")):
+                time.sleep(0.002)
+            signal.cancel()
+            worker.join(timeout=30)
+
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(len(raised), 1)
+            saved = sorted(output_dir.glob("*.png"))
+            self.assertGreaterEqual(len(saved), 1)
+            self.assertLess(len(saved), 12)
 
 
 class PredictorHelperTests(unittest.TestCase):

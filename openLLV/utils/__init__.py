@@ -1,8 +1,22 @@
-"""General utility functions for openLLV."""
+"""General utility functions and shared infrastructure for openLLV."""
 
-import torch
+from __future__ import annotations
+
 import datetime
 import sys
+
+import torch
+
+from .cancel import CancelSignal
+from .errors import EvaluateCancelled, TaskCancelled
+
+__all__ = [
+    "CancelSignal",
+    "EvaluateCancelled",
+    "TaskCancelled",
+    "device_display_name",
+    "log_info_env",
+]
 
 
 def device_display_name(device) -> str:
@@ -12,7 +26,7 @@ def device_display_name(device) -> str:
         device: Torch device object with a ``type`` attribute.
 
     Returns:
-        Display name for_teach CUDA, CPU, or other device types.
+        Display name for CUDA, CPU, or other device types.
     """
     if device.type == "cuda":
         index = device.index

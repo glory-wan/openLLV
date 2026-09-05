@@ -2,6 +2,8 @@
 
 import io
 import tempfile
+import threading
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -15,6 +17,7 @@ from torch.utils.data import DataLoader as TorchDataLoader
 import openLLV.deepLearning as deep_learning
 from openLLV.deepLearning.models import LLVModel, ZeroDCE, ZeroDCEPlusPlus
 from openLLV.deepLearning.predictor import Predictor
+from openLLV.utils import CancelSignal, TaskCancelled
 
 
 class PredictorIdentityModel(LLVModel):
@@ -723,6 +726,44 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
                     Path(temp_dir) / "missing",
                     progress_bar=False,
                 )
+
+    def test_batch_prediction_cancel_raises_and_keeps_saved_images(self):
+        predictor = Predictor(PredictorIdentityModel(), device="cpu", batch_size=1)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "input"
+            output_dir = root / "output"
+            for index in range(12):
+                write_image(input_dir / f"A{index}.png", index)
+
+            signal = CancelSignal()
+            raised = []
+
+            def run_batch():
+                try:
+                    predictor.predict_batch(
+                        input_dir,
+                        output_dir,
+                        progress_bar=False,
+                        cancel=signal,
+                    )
+                except TaskCancelled as error:
+                    raised.append(error)
+
+            worker = threading.Thread(target=run_batch, daemon=True)
+            worker.start()
+            deadline = time.time() + 30
+            while time.time() < deadline and not list(output_dir.glob("*.png")):
+                time.sleep(0.002)
+            signal.cancel()
+            worker.join(timeout=30)
+
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(len(raised), 1)
+            saved = sorted(output_dir.glob("*.png"))
+            self.assertGreaterEqual(len(saved), 1)
+            self.assertLess(len(saved), 12)
 
 
 class PredictorHelperTests(unittest.TestCase):

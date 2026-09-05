@@ -16,6 +16,7 @@ _PREDICT_CALL_KWARGS = {
     "timeout",
     "headers",
     "verify_ssl",
+    "cancel",
 }
 
 _MISSING = object()
@@ -55,6 +56,10 @@ def predict(
 
     Returns:
         Result returned by the selected backend predictor.
+
+    Raises:
+        TaskCancelled: If ``cancel`` was provided and cancellation was
+            requested during a directory prediction.
 
     Examples:
         ``openLLV.predict("ZeroDCE", "input.jpg", output="out.png")``

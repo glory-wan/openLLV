@@ -11,6 +11,8 @@ from pathlib import Path
 
 from .baseMetric import BaseMetric
 from openLLV.data import EvaluateDataset
+from openLLV.utils.cancel import CancelSignal
+from openLLV.utils.errors import EvaluateCancelled
 
 
 class Evaluator:
@@ -34,6 +36,14 @@ class Evaluator:
             save_path: path/to/save.json
             **kwargs: parameters passed to each metric
         """
+        cancel = kwargs.pop("cancel", None)
+        if cancel is not None and not isinstance(cancel, CancelSignal):
+            raise TypeError(
+                "cancel must be a CancelSignal or None, got "
+                f"{type(cancel).__name__}."
+            )
+        self._cancel = cancel
+
         if metrics is None:
             metrics = ['PSNR', 'SSIM']
         elif isinstance(metrics, str):
@@ -78,6 +88,10 @@ class Evaluator:
             num_workers=num_workers,
             batch_size=batch_size,
         )
+
+    def _cancellation_requested(self) -> bool:
+        """Return whether external cancellation has been requested."""
+        return self._cancel is not None and self._cancel.is_cancelled()
 
     def eval(self,
                 en_img_dir: str,
@@ -166,10 +180,15 @@ class Evaluator:
                 results['statistics'][metric_name] = self._compute_metric_statistics(values, better)
                 continue
 
-            values = self._compute_metric_for_dataset(
-                dataset=dataset, metric_name=metric_name, batch_size=batch_size,
-                num_workers=num_workers
-            )
+            try:
+                values = self._compute_metric_for_dataset(
+                    dataset=dataset, metric_name=metric_name, batch_size=batch_size,
+                    num_workers=num_workers
+                )
+            except EvaluateCancelled as error:
+                results['metrics'][metric_name] = dict(error.partial or {})
+                results['cancelled'] = True
+                break
 
             results['metrics'][metric_name] = values
 
@@ -256,6 +275,9 @@ class Evaluator:
             batch_size_current = en_batch.size(0)
 
             for i in range(batch_size_current):
+                if self._cancellation_requested():
+                    pbar.close()
+                    raise EvaluateCancelled(partial=values)
                 en_img = en_batch[i:i + 1]
                 ref_img = ref_batch[i:i + 1] if ref_batch is not None else None
                 filename = name_batch[i]

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -14,6 +16,7 @@ import yaml
 from PIL import Image
 
 import openLLV.deepLearning as deep_learning_package
+from openLLV.utils import CancelSignal
 from openLLV.data.datasets import BaseDataset
 from openLLV.deepLearning import Trainer
 from openLLV.deepLearning.config import (
@@ -511,6 +514,55 @@ class TrainerExecutionTests(unittest.TestCase):
             self.assertEqual(len(result["history"]), 1)
             self.assertTrue(
                 (Path(result["checkpoint_dir"]) / "last.pt").is_file()
+            )
+
+
+class TrainerCancellationTests(unittest.TestCase):
+    def test_mid_training_cancel_stops_and_allows_resume(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "cancel-mid"
+            epochs = 8
+            config = trainer_config(output_dir, epochs=epochs)
+            config["data"]["params"] = {"length": 8, "image_size": 8}
+            token = CancelSignal()
+            trainer = Trainer(config, cancel=token)
+
+            checkpoint_file = output_dir / "checkpoints" / "last.pt"
+
+            def cancel_after_first_checkpoint():
+                deadline = time.time() + 60
+                while time.time() < deadline:
+                    if checkpoint_file.exists():
+                        token.cancel()
+                        return
+                    time.sleep(0.001)
+
+            canceller = threading.Thread(
+                target=cancel_after_first_checkpoint,
+                daemon=True,
+            )
+            canceller.start()
+            result = trainer.train()
+            canceller.join(timeout=5)
+
+            self.assertFalse(canceller.is_alive())
+            self.assertTrue(result["stopped"])
+            self.assertGreaterEqual(len(result["history"]), 1)
+            self.assertLess(len(result["history"]), epochs)
+            self.assertTrue(checkpoint_file.is_file())
+            self.assertEqual(result["stop_epoch"], len(result["history"]))
+
+            saved_checkpoint = torch.load(checkpoint_file, map_location="cpu")
+            self.assertEqual(saved_checkpoint["epoch"], result["stop_epoch"])
+
+            resumed_config = trainer_config(output_dir, epochs=epochs)
+            resumed_config["train"]["resume"] = str(checkpoint_file)
+            resumed = Trainer(resumed_config)
+            self.assertEqual(resumed.start_epoch, result["stop_epoch"] + 1)
+            resumed_result = resumed.train()
+            self.assertEqual(
+                resumed_result["history"][-1]["epoch"],
+                epochs,
             )
 
 

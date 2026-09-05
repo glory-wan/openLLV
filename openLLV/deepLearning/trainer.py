@@ -29,6 +29,8 @@ from openLLV.deepLearning.config import (
 from openLLV.deepLearning.loss import BaseLoss
 from openLLV.deepLearning.models import LLVModel
 from openLLV.utils import device_display_name, log_info_env
+from openLLV.utils.cancel import CancelSignal
+from openLLV.utils.errors import TaskCancelled
 
 __all__ = ["Trainer"]
 
@@ -115,13 +117,23 @@ class Trainer:
                 configuration dictionary.
             **kwargs: Direct configuration overrides. Supported flat arguments
                 are mapped into model, data, loss, optimizer, scheduler, and
-                train sections.
+                train sections. An optional ``cancel`` keyword is read from
+                here: a ``CancelSignal`` enabling external cancellation.
+                When set, the training loop polls it at epoch and batch
+                boundaries and stops gracefully (saving a resume-able
+                checkpoint) once ``cancel()`` is called.
 
         Raises:
             FileNotFoundError: If a config path does not exist.
             ValueError: If required model or dataset settings are missing.
             TypeError: If unsupported keyword arguments are provided.
         """
+        cancel = kwargs.pop("cancel", None)
+        if cancel is not None and not isinstance(cancel, CancelSignal):
+            raise TypeError(
+                "cancel must be a CancelSignal or None, got "
+                f"{type(cancel).__name__}."
+            )
         config_input = config
         self.config_path = None
         if isinstance(config, (str, Path)):
@@ -135,6 +147,7 @@ class Trainer:
         self.config = self._with_defaults(self.user_config)
         self._validate_required_config()
 
+        self._cancel = cancel
         self.device = self._resolve_device(
             self.config["train"].get("device") or get_default_device()
         )
@@ -507,6 +520,10 @@ class Trainer:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+    def _cancellation_requested(self) -> bool:
+        """Return whether external cancellation has been requested."""
+        return self._cancel is not None and self._cancel.is_cancelled()
 
     def print_training_info(self) -> None:
         """Print a compact summary of the trainer setup."""
@@ -1302,6 +1319,10 @@ class Trainer:
         Returns:
             Dictionary containing training history, best validation loss, and
             checkpoint directory.
+
+            On external cancellation, the dictionary additionally contains
+            ``"stopped": True`` and ``"stop_epoch"`` (the last fully completed
+            epoch); the interrupted epoch is discarded.
         """
         epochs = int(self.config["train"]["epochs"])
         if self.training_started_at is None:
@@ -1309,6 +1330,9 @@ class Trainer:
             self.training_ended_at = None
             self._save_training_config()
             print(f"begin Training at {self.training_started_at}")
+
+        stopped = False
+        stop_epoch = self.start_epoch - 1
 
         try:
             for epoch in range(self.start_epoch, epochs + 1):
@@ -1353,9 +1377,29 @@ class Trainer:
                     f"| val_loss={val_loss:.6f}" if val_loss is not None
                     else f"Epoch {epoch}/{epochs} | train_loss={train_loss:.6f}"
                 )
+        except TaskCancelled:
+            stopped = True
+            stop_epoch = epoch - 1
+            print(
+                f"\nCancellation requested. Discarding epoch {epoch} and "
+                f"stopping at completed epoch {stop_epoch}."
+            )
         finally:
             self.training_ended_at = datetime.now().isoformat(timespec="seconds")
             self._save_training_config()
+
+        if stopped:
+            print(
+                f"Training stopped on request at {self.training_ended_at}.\n"
+                f"Resume with resume={self.checkpoint_dir / 'last.pt'}."
+            )
+            return {
+                "stopped": True,
+                "stop_epoch": stop_epoch,
+                "history": self.history,
+                "best_val_loss": self.best_val_loss,
+                "checkpoint_dir": str(self.checkpoint_dir),
+            }
 
         print(
             "\n"
@@ -1391,6 +1435,8 @@ class Trainer:
             disable=not bool(self.config["train"].get("progress_bar", True)),
         )
         for step, batch in enumerate(pbar, start=1):
+            if self._cancellation_requested():
+                raise TaskCancelled
             batch_size = self._batch_size(batch)
 
             self.optimizer.zero_grad(set_to_none=True)
@@ -1454,6 +1500,8 @@ class Trainer:
             disable=not bool(self.config["train"].get("progress_bar", True)),
         )
         for step, batch in enumerate(pbar, start=1):
+            if self._cancellation_requested():
+                raise TaskCancelled
             loss, _ = self._compute_batch_loss(batch)
 
             batch_size = self._batch_size(batch)

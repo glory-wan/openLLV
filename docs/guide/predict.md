@@ -153,3 +153,7 @@ print(predictor.get_params())
 ```
 
 Use `backend="traditional"` for an explicit algorithm backend. Available lookup names can be inspected with `Predictor.list_available_models()` and `Predictor.list_available_methods()`.
+
+## External Cancellation
+
+Pass a `CancelSignal` through the `cancel` keyword and call `signal.cancel()` from another thread to stop a directory prediction. On cancellation, `predict` raises `TaskCancelled` at the next image or batch boundary; images already saved remain on disk.

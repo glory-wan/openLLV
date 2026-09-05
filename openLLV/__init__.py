@@ -1,5 +1,6 @@
 """Open low-level vision toolkit."""
 
+from .utils import CancelSignal
 from .api import (
     enhance,
     eval,
@@ -24,6 +25,7 @@ __all__ = [
     "Predictor",
     "LLVModel",
     "Trainer",
+    "CancelSignal",
     "predict",
     "enhance",
     "train",

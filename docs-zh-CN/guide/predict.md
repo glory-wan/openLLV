@@ -153,3 +153,7 @@ print(predictor.get_params())
 ```
 
 需要显式选择传统算法后端时，请使用 `backend="traditional"`。可通过 `Predictor.list_available_models()` 和 `Predictor.list_available_methods()` 查看可用的查找名称。
+
+## 外部取消
+
+通过 `cancel` 关键字传入一个 `CancelSignal`，并在另一个线程调用 `signal.cancel()` 即可停止目录预测。取消时 `predict` 会在下一个图像或 batch 边界抛出 `TaskCancelled`；取消前已保存的图像保留在磁盘上。

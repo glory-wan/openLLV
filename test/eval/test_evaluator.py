@@ -4,6 +4,8 @@ import io
 import json
 import math
 import tempfile
+import threading
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -14,6 +16,7 @@ import torch
 from PIL import Image
 
 from openLLV.evaluation import BaseMetric, Evaluator
+from openLLV.utils import CancelSignal
 
 
 class SilentProgress:
@@ -153,6 +156,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
         evaluator.device = torch.device("cpu")
         evaluator.metric_instances = {}
         evaluator.metric_order = []
+        evaluator._cancel = None
         return evaluator
 
     def test_eval_builds_dataset_evaluates_and_saves(self):
@@ -468,6 +472,60 @@ class EvaluatorIntegrationTests(unittest.TestCase):
         value = evaluator.results["metrics"]["PSNR"]["sample.png"]
         self.assertTrue(math.isnan(value))
         self.assertEqual(evaluator.results["statistics"]["PSNR"]["valid_count"], 0)
+
+
+class EvaluatorCancellationTests(unittest.TestCase):
+    @staticmethod
+    def _write_pair(directory, name, value):
+        directory.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (256, 256), (value, value, value)).save(directory / name)
+
+    def test_mid_evaluation_cancel_returns_partial_results_and_marks_cancelled(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            enhanced_dir = root / "enhanced"
+            reference_dir = root / "reference"
+            save_path = root / "metrics.json"
+            for index in range(80):
+                self._write_pair(enhanced_dir, f"{index}.png", index)
+                self._write_pair(reference_dir, f"{index}.png", index)
+
+            signal = CancelSignal()
+            captured = {}
+
+            def run_eval():
+                with patch(
+                    "openLLV.evaluation.evaluator.tqdm",
+                    SilentProgress,
+                ):
+                    captured["result"] = Evaluator(
+                        en_img_dir=str(enhanced_dir),
+                        ref_img_dir=str(reference_dir),
+                        metrics=["PSNR", "SSIM"],
+                        save_path=save_path,
+                        device="cpu",
+                        batch_size=1,
+                        num_workers=0,
+                        cancel=signal,
+                    ).results
+
+            worker = threading.Thread(target=run_eval, daemon=True)
+            worker.start()
+            time.sleep(0.3)
+            signal.cancel()
+            worker.join(timeout=60)
+
+            self.assertFalse(worker.is_alive())
+            result = captured["result"]
+            self.assertTrue(result["cancelled"])
+            self.assertEqual(set(result["metrics"]), {"PSNR", "SSIM"})
+            self.assertTrue(
+                any(
+                    len(result["metrics"][name]) < 80
+                    for name in result["metrics"]
+                )
+            )
+            self.assertTrue(save_path.is_file())
 
 
 if __name__ == "__main__":

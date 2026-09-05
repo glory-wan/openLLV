@@ -197,3 +197,7 @@ result = llv.train(
 ```
 
 只有在有意加载部分兼容的状态字典时，才应使用 `strict_resume=False`。
+
+## 外部取消
+
+通过 `cancel` 关键字传入一个 `CancelSignal`，并在另一个线程调用 `signal.cancel()` 即可优雅地停止训练。训练会返回 `"stopped": True`、丢弃被中断的 epoch，并保留可用于恢复的 `last.pt` 检查点。
