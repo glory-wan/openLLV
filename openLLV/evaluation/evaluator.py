@@ -25,7 +25,7 @@ class Evaluator:
                  metrics: Union[str, List[str]] = None,
                  device: str = None,
                  batch_size: int = 1,
-                 num_workers: int = 8,
+                 workers: int = 8,
                  **kwargs):
         """
         Initialize evaluator
@@ -85,7 +85,7 @@ class Evaluator:
             en_img_dir=en_img_dir,
             ref_img_dir=ref_img_dir,
             save_path=save_path,
-            num_workers=num_workers,
+            workers=workers,
             batch_size=batch_size,
         )
 
@@ -98,7 +98,7 @@ class Evaluator:
                 ref_img_dir: Optional[str] = None,
                 save_path: Union[str, Path] = None,
                 batch_size: int = 1,
-                num_workers: int = 0) -> Dict[str, Any]:
+                workers: int = 0) -> Dict[str, Any]:
         """
         Directly evaluate images in a folder
 
@@ -107,7 +107,7 @@ class Evaluator:
             ref_img_dir: reference image folder path (optional)
             save_path: save path
             batch_size: batch size
-            num_workers: number of dataloader workers
+            workers: number of dataloader workers
             show_progress: whether to display progress bar
 
         Returns:
@@ -131,7 +131,7 @@ class Evaluator:
         results = self.evaluate_dataset(
             dataset=dataset,
             batch_size=batch_size,
-            num_workers=num_workers,
+            workers=workers,
         )
 
         self.save_results(results, save_path=save_path)
@@ -141,14 +141,14 @@ class Evaluator:
     def evaluate_dataset(self,
                          dataset: EvaluateDataset,
                          batch_size: int = 1,
-                         num_workers: int = 8,) -> Dict[str, Any]:
+                         workers: int = 8,) -> Dict[str, Any]:
         """
         Sequentially evaluate the entire datasets
 
         Args:
             dataset: EvaluateDataset instance
             batch_size: batch size
-            num_workers: number of dataloader workers
+            workers: number of dataloader workers
             show_progress: whether to display progress bar
 
         Returns:
@@ -183,7 +183,7 @@ class Evaluator:
             try:
                 values = self._compute_metric_for_dataset(
                     dataset=dataset, metric_name=metric_name, batch_size=batch_size,
-                    num_workers=num_workers
+                    workers=workers
                 )
             except EvaluateCancelled as error:
                 results['metrics'][metric_name] = dict(error.partial or {})
@@ -240,7 +240,7 @@ class Evaluator:
                                     dataset: EvaluateDataset,
                                     metric_name: str,
                                     batch_size: int = 1,
-                                    num_workers: int = 0,) -> Dict[str, float]:
+                                    workers: int = 0,) -> Dict[str, float]:
         """
         Compute a single metric over the entire datasets
 
@@ -248,7 +248,7 @@ class Evaluator:
             dataset: EvaluateDataset instance
             metric_name: metric name
             batch_size: batch size
-            num_workers: number of dataloader workers
+            workers: number of dataloader workers
             show_progress: whether to display progress bar
 
         Returns:
@@ -260,7 +260,7 @@ class Evaluator:
             dataset,
             batch_size=batch_size,
             shuffle=False,
-            num_workers=num_workers,
+            num_workers=workers,
             pin_memory=self.device.type == 'cuda',
             collate_fn=self.collate_fn
         )

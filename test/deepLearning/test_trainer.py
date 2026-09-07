@@ -138,7 +138,7 @@ def trainer_config(
             "dataset": dataset,
             "root_dir": ".",
             "batch_size": 2,
-            "num_workers": 0,
+            "workers": 0,
             "pin_memory": False,
             "shuffle": False,
             "train_split": "train",

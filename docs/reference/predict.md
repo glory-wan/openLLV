@@ -28,7 +28,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `transform`      | `Optional[Any]`                                    | `None`                  | Input transform for the deep-learning backend (callable or torchvision v2 transform list)                                                                                    |
 | `resize`         | `Optional[Union[int, Tuple[int, int], List[int]]]`  | `None`                  | Deep backend only. `None` performs no scaling; a positive integer makes a square input; a pair specifies `(height, width)`. Resizing runs before `transform`                 |
 | `batch_size`     | `int`                                              | `1`                     | Deep directory prediction: number of same-size images in one model call. Only complete groups are batched; must be positive                                                  |
-| `num_workers`    | `int`                                              | `0`                     | Deep directory prediction: DataLoader workers for image reading and CPU preprocessing; must be non-negative                                                                  |
+| `workers`    | `int`                                              | `0`                     | Deep directory prediction: DataLoader workers for image reading and CPU preprocessing; must be non-negative                                                                  |
 | `progress_bar`   | `bool`                                             | `True`                  | Show a tqdm progress bar for directory input (via `**kwargs`)                                                                                                                |
 | `output_name`    | `Optional[str]`                                    | `None`                  | Single-image filename override. `None` preserves the inferred source name and suffix, including case, when saving to a directory. Directory input requires `None`; any string raises `ValueError`                                         |
 | `output_ext`     | `Optional[str]`                                    | `None`                  | Saved-output suffix override, with or without a leading dot. For directory input, `None` preserves every source suffix exactly, including case; an explicit suffix replaces every suffix and preserves the supplied case                     |
@@ -93,7 +93,7 @@ Backend aliases: deep = `deep`/`deeplearning`/`deep_learning`/`dl`/`model`; trad
 - `config` and remaining `**kwargs` are merged into the model configuration.
 - `resize=None` uses the default PIL-to-float-tensor transform without resizing. Single-image and directory prediction therefore preserve each source input's original height and width unless the user explicitly supplies `resize` or a size-changing custom `transform`.
 - Directory inputs are grouped by source size, or by the explicit target size when `resize` is set. A group is sent to one model call only when it contains exactly `batch_size` compatible tensors. Remainders and shape-incompatible transformed tensors run as single-image calls. No padding is applied, so default batched preprocessing is the same as per-image preprocessing.
-- `num_workers` controls DataLoader reading/preprocessing workers; model inference remains in the predictor process. On spawn-based platforms, a custom `transform` used with `num_workers > 0` must be picklable.
+- `workers` controls DataLoader reading/preprocessing workers; model inference remains in the predictor process. On spawn-based platforms, a custom `transform` used with `workers > 0` must be picklable.
 - Checkpoints created by the openLLV trainer carry model class, configuration, and state dictionary; raw upstream `.pth` state dictionaries do not and must be loaded manually.
 
 ### Traditional-algorithm specifics
@@ -117,7 +117,7 @@ Predictor(
     transform=None,
     resize=None,
     batch_size=1,
-    num_workers=0,
+    workers=0,
     **kwargs,
 )
 ```
@@ -141,7 +141,7 @@ Class methods `Predictor.list_available_models()`, `list_available_methods()`, a
 | Exception    | Condition                                                                                                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `TypeError`  | Invalid `config` type; invalid `resize` type/items; `LLVEnhancer` passed with deep backend (or `LLVModel` with traditional); invalid backend-instance type                                                |
-| `ValueError` | Conflicting selectors; ambiguous/unresolvable backend; `resize` non-positive or not length two; non-`None` `resize` with the traditional backend; `batch_size` not positive; `num_workers` negative; empty `output_ext`; non-`None` `output_name` with directory input |
+| `ValueError` | Conflicting selectors; ambiguous/unresolvable backend; `resize` non-positive or not length two; non-`None` `resize` with the traditional backend; `batch_size` not positive; `workers` negative; empty `output_ext`; non-`None` `output_name` with directory input |
 
 ## Examples
 
@@ -187,7 +187,7 @@ saved_paths = llv.predict(
     "images/",
     output="results/zero_dce",
     batch_size=4,
-    num_workers=2,
+    workers=2,
     output_ext=".PNG",
     progress_bar=True,
 )

@@ -12,7 +12,7 @@ data:
   train_split: train
   val_split: val
   batch_size: 1
-  num_workers: 4
+  workers: 4
   pin_memory: true
   return_filename: true
 loss:

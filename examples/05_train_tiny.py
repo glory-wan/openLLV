@@ -23,7 +23,7 @@ def main() -> None:
         train_split="train",
         val_split="val",
         batch_size=1,
-        num_workers=0,
+        workers=0,
         pin_memory=False,
         loss="zerodce",
         optimizer="adam",

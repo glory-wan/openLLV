@@ -28,7 +28,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 | `transform` | `Optional[Any]` | `None` | 深度后端输入变换（可调用对象或 torchvision v2 变换列表） |
 | `resize` | `Optional[Union[int, Tuple[int, int], List[int]]]` | `None` | 仅深度后端。`None` 不缩放；正整数产生正方形输入；二元组/列表按 `(height, width)` 指定。缩放在 `transform` 前执行 |
 | `batch_size` | `int` | `1` | 深度目录预测中一次模型调用处理的同尺寸图像数。只有完整组才批处理；必须为正整数 |
-| `num_workers` | `int` | `0` | 深度目录预测中用于图像读取和 CPU 预处理的 DataLoader worker 数；必须非负 |
+| `workers` | `int` | `0` | 深度目录预测中用于图像读取和 CPU 预处理的 DataLoader worker 数；必须非负 |
 | `progress_bar` | `bool` | `True` | 目录输入时显示 tqdm 进度条（经 `**kwargs`） |
 | `output_name` | `Optional[str]` | `None` | 单图文件名覆盖。保存到目录且为 `None` 时，保留推断出的源名称与后缀及其大小写。目录输入只允许 `None`；任何字符串均抛 `ValueError` |
 | `output_ext` | `Optional[str]` | `None` | 保存结果的后缀覆盖，可带或不带前导点。目录输入时，`None` 逐字符保留每个源后缀及其大小写；显式值替换全部后缀并保留参数中的大小写 |
@@ -93,7 +93,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 - `config` 与其余 `**kwargs` 合并进模型配置。
 - `resize=None` 使用默认的 PIL 转浮点张量变换，不进行缩放。因此，除非用户显式设置 `resize` 或提供会改变尺寸的自定义 `transform`，单图与目录预测都会保持每张源图的原始高宽。
 - 目录输入按源尺寸分组；显式设置 `resize` 时按目标尺寸分组。只有恰好包含 `batch_size` 个兼容张量的完整组才会进行一次批量模型调用；余数及变换后尺寸不兼容的张量退化为逐图调用。不使用 padding，默认批量预处理与逐图预处理一致。
-- `num_workers` 控制 DataLoader 的读取/预处理 worker；模型推理仍在预测器进程中执行。在使用 spawn 的平台上，`num_workers > 0` 时自定义 `transform` 必须可序列化。
+- `workers` 控制 DataLoader 的读取/预处理 worker；模型推理仍在预测器进程中执行。在使用 spawn 的平台上，`workers > 0` 时自定义 `transform` 必须可序列化。
 - openLLV 训练器产出的 checkpoint 包含模型类、配置与状态字典；上游原始 `.pth` 状态字典不含这些元数据，需手动构造模型类加载。
 
 ### 传统算法细节
@@ -117,7 +117,7 @@ Predictor(
     transform=None,
     resize=None,
     batch_size=1,
-    num_workers=0,
+    workers=0,
     **kwargs,
 )
 ```
@@ -141,7 +141,7 @@ Predictor(
 | Exception | Condition |
 | --- | --- |
 | `TypeError` | `config` 类型非法；`resize` 类型或元素非法；`LLVEnhancer` 实例走深度后端（或 `LLVModel` 走传统后端）；后端实例类型非法 |
-| `ValueError` | 选择器冲突；注册名二义或后端无法解析；`resize` 非正或不是二元组，或传统后端收到非 `None` 的 `resize`；`batch_size` 非正；`num_workers` 为负；`output_ext` 为空；目录输入传非 `None` 的 `output_name` |
+| `ValueError` | 选择器冲突；注册名二义或后端无法解析；`resize` 非正或不是二元组，或传统后端收到非 `None` 的 `resize`；`batch_size` 非正；`workers` 为负；`output_ext` 为空；目录输入传非 `None` 的 `output_name` |
 
 ## Examples
 
@@ -187,7 +187,7 @@ saved_paths = llv.predict(
     "images/",
     output="results/zero_dce",
     batch_size=4,
-    num_workers=2,
+    workers=2,
     output_ext=".PNG",
     progress_bar=True,
 )

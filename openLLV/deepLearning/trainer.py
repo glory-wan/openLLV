@@ -258,7 +258,7 @@ class Trainer:
             "dataset_name": ("data", "dataset"),
             "root_dir": ("data", "root_dir"),
             "batch_size": ("data", "batch_size"),
-            "num_workers": ("data", "num_workers"),
+            "workers": ("data", "workers"),
             "pin_memory": ("data", "pin_memory"),
             "shuffle": ("data", "shuffle"),
             "drop_last": ("data", "drop_last"),
@@ -368,8 +368,8 @@ class Trainer:
             data_cfg.get("batch_size"),
         )
         self._validate_non_negative_int(
-            "data.num_workers",
-            data_cfg.get("num_workers"),
+            "data.workers",
+            data_cfg.get("workers"),
         )
         for key in ("params", "train_params", "val_params"):
             if not isinstance(data_cfg.get(key), dict):
@@ -769,7 +769,7 @@ class Trainer:
 
         loader_kwargs = {
             "batch_size": data_cfg["batch_size"],
-            "num_workers": data_cfg["num_workers"],
+            "num_workers": data_cfg["workers"],
             "pin_memory": bool(data_cfg.get("pin_memory", True))
             and self.device.type == "cuda",
             "collate_fn": _collate_optional,

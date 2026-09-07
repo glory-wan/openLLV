@@ -49,7 +49,7 @@ results = llv.evaluate(
     save_path="results/zero_dce/evaluation.json",
     device="cuda",
     batch_size=1,
-    num_workers=4,
+    workers=4,
 )
 ```
 

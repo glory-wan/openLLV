@@ -183,7 +183,7 @@ class Predictor:
         transform: Optional[Any] = None,
         resize: ResizeInput = None,
         batch_size: int = 1,
-        num_workers: int = 0,
+        workers: int = 0,
     ) -> None:
         """Initialize a low-level vision predictor.
 
@@ -202,18 +202,18 @@ class Predictor:
                 ``None`` preserves every source image's original dimensions.
             batch_size: Number of same-size directory images per model call.
                 Incomplete groups fall back to single-image calls.
-            num_workers: DataLoader workers used for directory image reading and
+            workers: DataLoader workers used for directory image reading and
                 preprocessing.
 
         Raises:
             TypeError: If ``resize`` has an unsupported type or element type.
             ValueError: If ``resize`` is invalid, ``batch_size`` is not
-                positive, or ``num_workers`` is negative.
+                positive, or ``workers`` is negative.
         """
         if not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size must be a positive integer.")
-        if not isinstance(num_workers, int) or num_workers < 0:
-            raise ValueError("num_workers must be a non-negative integer.")
+        if not isinstance(workers, int) or workers < 0:
+            raise ValueError("workers must be a non-negative integer.")
 
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -231,7 +231,7 @@ class Predictor:
         self.transform = self._build_transform(transform)
         self.resize_size = self._normalize_resize_size(resize)
         self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.workers = workers
         self.image_reader = ImageReader()
 
     def __call__(
@@ -415,7 +415,7 @@ class Predictor:
         data_loader = DataLoader(
             dataset,
             batch_sampler=batch_sampler,
-            num_workers=self.num_workers,
+            num_workers=self.workers,
             collate_fn=_return_samples_as_list,
         )
         iterator = (
@@ -485,7 +485,7 @@ class Predictor:
             "output_dir": str(self.output_dir),
             "resize": self.resize_size,
             "batch_size": self.batch_size,
-            "num_workers": self.num_workers,
+            "workers": self.workers,
             "config": dict(getattr(self.model, "config", {})),
         }
 

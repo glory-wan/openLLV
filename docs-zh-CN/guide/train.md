@@ -125,7 +125,7 @@ result = llv.train(
 | `dataset_name` | `"CommonDataset"` | `dataset` 的别名。 |
 | `root_dir` | `None` | 数据集根目录；除非 `dataset` 是已有数据集实例，否则必填。 |
 | `batch_size` | `4` | 每个训练或验证 batch 的样本数；必须为正整数。 |
-| `num_workers` | `0` | DataLoader 工作进程数；必须为非负整数。 |
+| `workers` | `0` | DataLoader 工作进程数；必须为非负整数。 |
 | `pin_memory` | `True` | 在 CUDA 训练时启用 DataLoader 固定内存。 |
 | `shuffle` | `True` | 是否打乱训练 DataLoader；验证数据不会打乱。 |
 | `drop_last` | `False` | 是否丢弃训练集最后一个不完整 batch。 |

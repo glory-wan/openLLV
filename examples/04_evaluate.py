@@ -26,7 +26,7 @@ def main() -> None:
         metrics=["PSNR", "SSIM"],
         save_path=save_path,
         batch_size=1,
-        num_workers=0,
+        workers=0,
         device="cpu",
     )
 

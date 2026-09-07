@@ -33,7 +33,7 @@ openLLV.evaluate(
 | `ref` | `Optional[Union[str, Path]]` | 未提供 | `ref_img_dir` 的仅关键字向后兼容别名。 | 两个名称同时提供抛 `TypeError`。 |
 | `device` | `Optional[Union[str, torch.device]]` | `None` | 经 `**kwargs` 转发给 `Evaluator` 的指标设备；`None` 为 CUDA（若可用），否则 CPU。 | 必须可被 `torch.device` 接受。 |
 | `batch_size` | `int` | `1` | 经 `**kwargs` 转发的评估 DataLoader batch size。 | 传给 `torch.utils.data.DataLoader`。 |
-| `num_workers` | `int` | `8` | 经 `**kwargs` 转发的评估 DataLoader worker 数。 | 传给 `torch.utils.data.DataLoader`。 |
+| `workers` | `int` | `8` | 经 `**kwargs` 转发的评估 DataLoader worker 数。 | 传给 `torch.utils.data.DataLoader`。 |
 | `data_range` | `float` | `1.0` | 经 `**kwargs` 转发的共享指标构造选项；PSNR、SSIM、LPIPS、NIQE、PI 消费。 | 表示图像数据范围最大值。 |
 | `window_size` | `int` | `11` | 经 `**kwargs` 转发的 SSIM 高斯窗口大小。 | 作为卷积窗口大小。 |
 | `sigma` | `float` | `1.5` | 经 `**kwargs` 转发的 SSIM 高斯窗口标准差。 | 用于构造高斯权重。 |
@@ -90,11 +90,11 @@ evaluator.eval(
     ref_img_dir=None,
     save_path=None,
     batch_size=1,
-    num_workers=0,
+    workers=0,
 )
 ```
 
-该公开方法使用已经选择的指标实例重新评估另一目录，并返回/保存新结果字典。与构造器不同，它的 `num_workers` 默认值是 `0`。
+该公开方法使用已经选择的指标实例重新评估另一目录，并返回/保存新结果字典。与构造器不同，它的 `workers` 默认值是 `0`。
 
 ### Raises
 
@@ -123,7 +123,7 @@ evaluator = llv.evaluate(
     en="results/enhanced",
     metrics="NIQE",
     return_evaluator=True,
-    num_workers=0,
+    workers=0,
 )
 print(evaluator.results["statistics"])
 ```

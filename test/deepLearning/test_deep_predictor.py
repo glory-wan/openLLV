@@ -181,8 +181,8 @@ class PredictorInitializationTests(unittest.TestCase):
             Predictor(PredictorIdentityModel(), config="bad", device="cpu")
         with self.assertRaisesRegex(ValueError, "batch_size"):
             Predictor(PredictorIdentityModel(), batch_size=0, device="cpu")
-        with self.assertRaisesRegex(ValueError, "num_workers"):
-            Predictor(PredictorIdentityModel(), num_workers=-1, device="cpu")
+        with self.assertRaisesRegex(ValueError, "workers"):
+            Predictor(PredictorIdentityModel(), workers=-1, device="cpu")
 
         for resize, error_type in (
             (True, TypeError),
@@ -230,7 +230,7 @@ class PredictorInitializationTests(unittest.TestCase):
             output_dir="outputs",
             device="cpu",
             batch_size=2,
-            num_workers=3,
+            workers=3,
         )
 
         params = predictor.get_params()
@@ -241,7 +241,7 @@ class PredictorInitializationTests(unittest.TestCase):
         self.assertEqual(params["output_dir"], "outputs")
         self.assertIsNone(params["resize"])
         self.assertEqual(params["batch_size"], 2)
-        self.assertEqual(params["num_workers"], 3)
+        self.assertEqual(params["workers"], 3)
         self.assertEqual(params["config"]["marker"], "value")
 
     def test_global_registry_and_deep_learning_package_exports(self):
@@ -627,18 +627,18 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
         self.assertEqual(model.forward_batch_sizes, [2])
         self.assertEqual(predictor.get_params()["resize"], (5, 11))
 
-    def test_batch_forwards_num_workers_to_data_loader(self):
+    def test_batch_forwards_workers_to_data_loader(self):
         observed = {}
 
         def build_loader(*args, **kwargs):
-            observed["num_workers"] = kwargs["num_workers"]
+            observed["workers"] = kwargs["num_workers"]
             kwargs["num_workers"] = 0
             return TorchDataLoader(*args, **kwargs)
 
         predictor = Predictor(
             PredictorIdentityModel(),
             device="cpu",
-            num_workers=2,
+            workers=2,
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             input_dir = Path(temp_dir) / "input"
@@ -654,7 +654,7 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
                     save=False,
                 )
 
-        self.assertEqual(observed["num_workers"], 2)
+        self.assertEqual(observed["workers"], 2)
 
     def test_batch_can_load_images_in_a_worker_process(self):
         model = PredictorIdentityModel()
@@ -662,7 +662,7 @@ class PredictorSavingAndBatchTests(unittest.TestCase):
             model,
             device="cpu",
             batch_size=2,
-            num_workers=1,
+            workers=1,
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:

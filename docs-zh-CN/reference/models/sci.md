@@ -37,7 +37,7 @@ Trainer 在训练和验证时都会为该损失请求结构化训练输出；推
 
 ### 内置训练配置
 
-`llv.train("SCI", ...)` 加载 `openLLV/deepLearning/config/SCI.yaml`。优化器为 Adam，`lr=0.0003`、`betas=[0.9, 0.999]`、`weight_decay=0.0003`。YAML 不包含 scheduler 分区，因此 Trainer 使用默认值禁用学习率调度。训练采用 `epochs=100`，梯度范数裁剪阈值为 `5.0`。100 轮是有意保留的设置，与官方训练脚本默认的 1000 轮不同。其他内置设置保持不变，包括 `batch_size=2`、`num_workers=4`、`seed=42` 和 `amp=false`。
+`llv.train("SCI", ...)` 加载 `openLLV/deepLearning/config/SCI.yaml`。优化器为 Adam，`lr=0.0003`、`betas=[0.9, 0.999]`、`weight_decay=0.0003`。YAML 不包含 scheduler 分区，因此 Trainer 使用默认值禁用学习率调度。训练采用 `epochs=100`，梯度范数裁剪阈值为 `5.0`。100 轮是有意保留的设置，与官方训练脚本默认的 1000 轮不同。其他内置设置保持不变，包括 `batch_size=2`、`workers=4`、`seed=42` 和 `amp=false`。
 
 上述初始化与损失约定对应官方 CVPR 版的[模型](https://github.com/vis-opt-group/SCI/blob/main/CVPR/model.py)、[损失](https://github.com/vis-opt-group/SCI/blob/main/CVPR/loss.py)和[训练脚本](https://github.com/vis-opt-group/SCI/blob/main/CVPR/train.py)。
 

@@ -34,7 +34,7 @@ DEFAULT_TRAIN_CONFIG: Dict[str, Any] = {
         "dataset": "CommonDataset",
         "root_dir": None,
         "batch_size": 4,
-        "num_workers": 0,
+        "workers": 0,
         "pin_memory": True,
         "shuffle": True,
         "drop_last": False,

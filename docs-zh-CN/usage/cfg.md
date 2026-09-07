@@ -47,7 +47,7 @@ data:
   train_split: train
   val_split: _test
   batch_size: 4
-  num_workers: 4
+  workers: 4
   pin_memory: true
   return_filename: true
   resize: null

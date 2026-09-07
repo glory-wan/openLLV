@@ -74,7 +74,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
                 evaluator = Evaluator(
                     en_img_dir="enhanced",
                     device="cpu",
-                    num_workers=0,
+                    workers=0,
                 )
 
         self.assertEqual(evaluator.device, torch.device("cpu"))
@@ -84,7 +84,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
             en_img_dir="enhanced",
             ref_img_dir=None,
             save_path=None,
-            num_workers=0,
+            workers=0,
             batch_size=1,
         )
 
@@ -95,7 +95,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
                     "enhanced",
                     metrics="psnr",
                     device="cpu",
-                    num_workers=0,
+                    workers=0,
                 )
 
         self.assertEqual(evaluator.metric_order, ["PSNR"])
@@ -108,7 +108,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
                     "enhanced",
                     metrics=["mae", "psnr", "mse"],
                     device="cpu",
-                    num_workers=0,
+                    workers=0,
                 )
 
         self.assertEqual(evaluator.metric_order, ["MAE", "PSNR", "MSE"])
@@ -125,7 +125,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
                         "enhanced",
                         metrics="unknown",
                         device="cpu",
-                        num_workers=0,
+                        workers=0,
                     )
 
         self.assertEqual(evaluator.metric_order, [])
@@ -144,7 +144,7 @@ class EvaluatorInitializationTests(unittest.TestCase):
                             "enhanced",
                             metrics="PSNR",
                             device="cpu",
-                            num_workers=0,
+                            workers=0,
                         )
 
         self.assertEqual(evaluator.metric_order, [])
@@ -189,7 +189,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
                             ref_img_dir="reference",
                             save_path="result.json",
                             batch_size=2,
-                            num_workers=0,
+                            workers=0,
                         )
 
         self.assertIs(result, expected)
@@ -200,7 +200,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
         evaluate_mock.assert_called_once_with(
             dataset=dataset,
             batch_size=2,
-            num_workers=0,
+            workers=0,
         )
         save_mock.assert_called_once_with(expected, save_path="result.json")
 
@@ -271,7 +271,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
                     dataset,
                     "FAKE",
                     batch_size=2,
-                    num_workers=0,
+                    workers=0,
                 )
 
         self.assertEqual(values["ok.png"], 4.0)
@@ -301,7 +301,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
                     results = evaluator.evaluate_dataset(
                         dataset,
                         batch_size=1,
-                        num_workers=0,
+                        workers=0,
                     )
 
         self.assertTrue(math.isnan(results["metrics"]["REF"]["a.png"]))
@@ -312,7 +312,7 @@ class EvaluatorWorkflowTests(unittest.TestCase):
             dataset=dataset,
             metric_name="NOREF",
             batch_size=1,
-            num_workers=0,
+            workers=0,
         )
         summary_mock.assert_called_once_with(results=results)
 
@@ -435,7 +435,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
                             save_path=save_path,
                             device="cpu",
                             batch_size=2,
-                            num_workers=0,
+                            workers=0,
                         )
 
             payload = json.loads(save_path.read_text(encoding="utf-8"))
@@ -466,7 +466,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
                             metrics="PSNR",
                             save_path=save_path,
                             device="cpu",
-                            num_workers=0,
+                            workers=0,
                         )
 
         value = evaluator.results["metrics"]["PSNR"]["sample.png"]
@@ -505,7 +505,7 @@ class EvaluatorCancellationTests(unittest.TestCase):
                         save_path=save_path,
                         device="cpu",
                         batch_size=1,
-                        num_workers=0,
+                        workers=0,
                         cancel=signal,
                     ).results
 

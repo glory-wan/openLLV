@@ -77,7 +77,7 @@ def _add_predict_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Same-size images per deep-model forward pass.",
     )
     parser.add_argument(
-        "--num-workers",
+        "--workers",
         type=int,
         default=0,
         help="DataLoader workers for deep directory prediction.",
@@ -248,7 +248,7 @@ def _cmd_predict(args: argparse.Namespace) -> Any:
                     else args.resize
                 ),
                 "batch_size": args.batch_size,
-                "num_workers": args.num_workers,
+                "workers": args.workers,
                 "progress_bar": not args.no_progress,
                 "save": not args.no_save,
                 "output_name": args.output_name,

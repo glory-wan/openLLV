@@ -21,7 +21,7 @@ openLLV.train(config=None, **kwargs)
 | `dataset`, `dataset_name` | `str`、`BaseDataset` 或 `Type[BaseDataset]` | `"CommonDataset"` | `data.dataset` 的平铺别名。 | 注册名匹配不区分大小写。 |
 | `root_dir` | `Optional[Union[str, Path]]` | `None` | 映射到 `data.root_dir`。 | 除非 `dataset` 是已有 `BaseDataset` 实例，否则必填。 |
 | `batch_size` | `int` | `4` | 映射到 `data.batch_size`。 | 正的非布尔整数。 |
-| `num_workers` | `int` | `0` | 映射到 `data.num_workers`。 | 非负、非布尔整数。 |
+| `workers` | `int` | `0` | 映射到 `data.workers`。 | 非负、非布尔整数。 |
 | `pin_memory` | `bool` | `True` | 映射到 `data.pin_memory`。 | 传给 DataLoader。 |
 | `shuffle` | `bool` | `True` | 映射到训练 loader 的 `data.shuffle`。 | — |
 | `drop_last` | `bool` | `False` | 映射到 `data.drop_last`。 | — |

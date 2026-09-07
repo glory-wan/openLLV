@@ -37,7 +37,7 @@ The Trainer requests the structured training output for this loss during both tr
 
 ### Packaged training configuration
 
-`llv.train("SCI", ...)` loads `openLLV/deepLearning/config/SCI.yaml`. Its optimizer is Adam with `lr=0.0003`, `betas=[0.9, 0.999]`, and `weight_decay=0.0003`. The YAML omits the scheduler section, so the Trainer default disables scheduling. Training uses `epochs=100` and gradient-norm clipping at `5.0`. The 100-epoch duration is intentional and differs from the official training script's 1000-epoch default. Other packaged settings, including `batch_size=2`, `num_workers=4`, `seed=42`, and `amp=false`, are unchanged.
+`llv.train("SCI", ...)` loads `openLLV/deepLearning/config/SCI.yaml`. Its optimizer is Adam with `lr=0.0003`, `betas=[0.9, 0.999]`, and `weight_decay=0.0003`. The YAML omits the scheduler section, so the Trainer default disables scheduling. Training uses `epochs=100` and gradient-norm clipping at `5.0`. The 100-epoch duration is intentional and differs from the official training script's 1000-epoch default. Other packaged settings, including `batch_size=2`, `workers=4`, `seed=42`, and `amp=false`, are unchanged.
 
 These initialization and loss conventions follow the [official CVPR model](https://github.com/vis-opt-group/SCI/blob/main/CVPR/model.py), [loss](https://github.com/vis-opt-group/SCI/blob/main/CVPR/loss.py), and [training script](https://github.com/vis-opt-group/SCI/blob/main/CVPR/train.py).
 

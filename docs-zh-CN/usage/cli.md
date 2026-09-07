@@ -43,10 +43,10 @@ python -m openLLV.cli predict ZeroDCE input.jpg -o results/zero_dce.png --device
 目录输入：
 
 ```bash
-python -m openLLV.cli predict ZeroDCE images -o results/zero_dce --batch-size 4 --num-workers 2 --no-progress
+python -m openLLV.cli predict ZeroDCE images -o results/zero_dce --batch-size 4 --workers 2 --no-progress
 ```
 
-重要选项包括 `--backend`、`--device`、`--output-dir`、`--batch-size`、`--num-workers`、`--resize`、`--no-save`、`--output-name` 和 `--output-ext`。`--resize SIZE` 指定正方形输入，`--resize HEIGHT WIDTH` 指定明确高宽；省略时不做缩放。
+重要选项包括 `--backend`、`--device`、`--output-dir`、`--batch-size`、`--workers`、`--resize`、`--no-save`、`--output-name` 和 `--output-ext`。`--resize SIZE` 指定正方形输入，`--resize HEIGHT WIDTH` 指定明确高宽；省略时不做缩放。
 
 ## 训练
 

@@ -42,7 +42,7 @@ class CLIParserTests(unittest.TestCase):
                 "cpu",
                 "--batch-size",
                 "2",
-                "--num-workers",
+                "--workers",
                 "3",
                 "--resize",
                 "256",
@@ -66,7 +66,7 @@ class CLIParserTests(unittest.TestCase):
         self.assertEqual(args.backend, "deep")
         self.assertEqual(args.device, "cpu")
         self.assertEqual(args.batch_size, 2)
-        self.assertEqual(args.num_workers, 3)
+        self.assertEqual(args.workers, 3)
         self.assertEqual(args.resize, [256, 384])
         self.assertTrue(args.no_progress)
         self.assertTrue(args.no_save)
@@ -163,7 +163,7 @@ class CLICommandDispatchTests(unittest.TestCase):
             backend="auto",
             resize=128,
             batch_size=1,
-            num_workers=0,
+            workers=0,
             progress_bar=False,
             save=False,
         )

@@ -128,7 +128,7 @@ class SCITests(unittest.TestCase):
                 Image.new("RGB", (8, 8), (20, 30, 40)).save(folder / "image.png")
             trainer = Trainer(
                 "SCI", root_dir=root, output_dir=root / "output",
-                device="cpu", epochs=1, num_workers=0, progress_bar=False,
+                device="cpu", epochs=1, workers=0, progress_bar=False,
             )
             self.assertIsNone(trainer.scheduler)
             self.assertEqual(trainer.optimizer.param_groups[0]["lr"], 3e-4)

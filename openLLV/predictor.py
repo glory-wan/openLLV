@@ -55,7 +55,7 @@ class Predictor:
         transform: Optional[Any] = None,
         resize: Optional[Union[int, Tuple[int, int], List[int]]] = None,
         batch_size: int = 1,
-        num_workers: int = 0,
+        workers: int = 0,
         **kwargs: Any,
     ) -> None:
         """Initialize a unified predictor.
@@ -74,7 +74,7 @@ class Predictor:
             resize: Optional deep-learning input resize in ``(height, width)``
                 order. ``None`` preserves source dimensions.
             batch_size: Deep-learning batch prediction size.
-            num_workers: Deep-learning data-loader worker count.
+            workers: Deep-learning data-loader worker count.
             **kwargs: Model configuration overrides for the deep backend, or
                 algorithm parameter overrides for the traditional backend.
 
@@ -111,7 +111,7 @@ class Predictor:
                 transform=transform,
                 resize=resize,
                 batch_size=batch_size,
-                num_workers=num_workers,
+                workers=workers,
             )
         else:
             if resize is not None:

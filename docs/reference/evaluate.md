@@ -33,7 +33,7 @@ openLLV.evaluate(
 | `ref` | `Optional[Union[str, Path]]` | not supplied | Keyword-only backward-compatible alias for `ref_img_dir`. | Supplying both names raises `TypeError`. |
 | `device` | `Optional[Union[str, torch.device]]` | `None` | Metric device, forwarded through `**kwargs` to `Evaluator`; `None` selects CUDA when available, otherwise CPU. | Must be accepted by `torch.device`. |
 | `batch_size` | `int` | `1` | Evaluation DataLoader batch size, forwarded through `**kwargs`. | Passed to `torch.utils.data.DataLoader`. |
-| `num_workers` | `int` | `8` | Evaluation DataLoader worker count, forwarded through `**kwargs`. | Passed to `torch.utils.data.DataLoader`. |
+| `workers` | `int` | `8` | Evaluation DataLoader worker count, forwarded through `**kwargs`. | Passed to `torch.utils.data.DataLoader`. |
 | `data_range` | `float` | `1.0` | Shared metric constructor option forwarded through `**kwargs`; consumed by PSNR, SSIM, LPIPS, NIQE, and PI. | Represents the maximum image data range. |
 | `window_size` | `int` | `11` | SSIM Gaussian-window size forwarded through `**kwargs`. | Used as convolution window size. |
 | `sigma` | `float` | `1.5` | SSIM Gaussian-window standard deviation forwarded through `**kwargs`. | Used to build the Gaussian weights. |
@@ -90,11 +90,11 @@ evaluator.eval(
     ref_img_dir=None,
     save_path=None,
     batch_size=1,
-    num_workers=0,
+    workers=0,
 )
 ```
 
-This public method reruns the already selected metric instances on another directory and returns/saves a new result dictionary. Unlike the constructor, its `num_workers` default is `0`.
+This public method reruns the already selected metric instances on another directory and returns/saves a new result dictionary. Unlike the constructor, its `workers` default is `0`.
 
 ### Raises
 
@@ -123,7 +123,7 @@ evaluator = llv.evaluate(
     en="results/enhanced",
     metrics="NIQE",
     return_evaluator=True,
-    num_workers=0,
+    workers=0,
 )
 print(evaluator.results["statistics"])
 ```

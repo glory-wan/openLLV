@@ -21,7 +21,7 @@ openLLV.train(config=None, **kwargs)
 | `dataset`, `dataset_name` | `str`, `BaseDataset`, or `Type[BaseDataset]` | `"CommonDataset"` | Alias flat keys for `data.dataset`. | Registered name lookup is case-insensitive. |
 | `root_dir` | `Optional[Union[str, Path]]` | `None` | Maps to `data.root_dir`. | Required unless `dataset` is an existing `BaseDataset` instance. |
 | `batch_size` | `int` | `4` | Maps to `data.batch_size`. | Positive non-boolean integer. |
-| `num_workers` | `int` | `0` | Maps to `data.num_workers`. | Non-negative non-boolean integer. |
+| `workers` | `int` | `0` | Maps to `data.workers`. | Non-negative non-boolean integer. |
 | `pin_memory` | `bool` | `True` | Maps to `data.pin_memory`. | Passed to DataLoader. |
 | `shuffle` | `bool` | `True` | Maps to `data.shuffle` for the training loader. | — |
 | `drop_last` | `bool` | `False` | Maps to `data.drop_last`. | — |

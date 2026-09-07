@@ -125,7 +125,7 @@ The defaults below are the generic Trainer defaults before a built-in YAML, cust
 | `dataset_name` | `"CommonDataset"` | Alias of `dataset`. |
 | `root_dir` | `None` | Dataset root directory; required unless `dataset` is an existing dataset instance. |
 | `batch_size` | `4` | Number of samples per training or validation batch; must be a positive integer. |
-| `num_workers` | `0` | Number of DataLoader worker processes; must be a non-negative integer. |
+| `workers` | `0` | Number of DataLoader worker processes; must be a non-negative integer. |
 | `pin_memory` | `True` | Enables DataLoader pinned memory when training on CUDA. |
 | `shuffle` | `True` | Shuffles the training DataLoader. Validation is never shuffled. |
 | `drop_last` | `False` | Drops the final incomplete training batch. |
