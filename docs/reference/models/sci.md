@@ -27,6 +27,20 @@ SCI is a staged illumination-estimation and calibration model. In openLLV it is 
 
 The constructor is `SCI(config=None, **kwargs)`. `LLVModel` merges shared defaults, `config`, then `kwargs`, so a keyword override wins over the same key in `config`. The enhancer estimates an illumination map and each training stage calibrates the next input. With `mode="train"`, `forward(x)` returns a standardized dictionary whose `pred` is the final reflectance and whose `aux` contains `enhanced`, `ilist`, `rlist`, `inlist`, and `attlist`. With `mode="inference"`, only the first-stage enhanced tensor is returned. The network layers themselves are hard-coded for three-channel input; changing `input_channels` does not change them.
 
+The enhancement and calibration networks share their residual blocks. Each independent module is initialized once, matching the official CVPR 2022 training script. The initial training input retains `x.clone()`: it preserves values and gradients because this input is not modified in place. Inference retains the calibration module in the model but does not call it; with the same enhancement weights and evaluation mode, it does not affect the returned image.
+
+### Training loss
+
+`Sci_Loss` uses `aux["ilist"]` (stage illumination estimates) and `aux["inlist"]` (stage inputs). For every stage `t`, it computes `1.5 * MSE(ilist[t], inlist[t]) + SmoothLoss(inlist[t], ilist[t])`, then sums all stage losses without averaging. The stage input guides the smoothness weights. Neither `pred` nor `aux["enhanced"]` is the loss target for structured SCI training outputs. The existing smoothness formula and device-aware constants are unchanged.
+
+The Trainer requests the structured training output for this loss during both training and validation; inference still returns only the enhanced tensor. Legacy `loss_inputs` mappings remain supported. Stage lists must be non-empty lists or tuples of equal length, otherwise `ValueError` is raised. Direct tensor calls compute a single input/illumination pair; legacy mappings containing only `enhanced`/`pred` retain their single-pair behavior.
+
+### Packaged training configuration
+
+`llv.train("SCI", ...)` loads `openLLV/deepLearning/config/SCI.yaml`. Its optimizer is Adam with `lr=0.0003`, `betas=[0.9, 0.999]`, and `weight_decay=0.0003`. The YAML omits the scheduler section, so the Trainer default disables scheduling. Training uses `epochs=100` and gradient-norm clipping at `5.0`. The 100-epoch duration is intentional and differs from the official training script's 1000-epoch default. Other packaged settings, including `batch_size=2`, `num_workers=4`, `seed=42`, and `amp=false`, are unchanged.
+
+These initialization and loss conventions follow the [official CVPR model](https://github.com/vis-opt-group/SCI/blob/main/CVPR/model.py), [loss](https://github.com/vis-opt-group/SCI/blob/main/CVPR/loss.py), and [training script](https://github.com/vis-opt-group/SCI/blob/main/CVPR/train.py).
+
 ## Parameters
 
 | Parameter | Type | Default | Meaning | Constraints |

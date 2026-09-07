@@ -116,7 +116,8 @@ class BuiltInConfigCompatibilityTests(unittest.TestCase):
             with self.subTest(config_name=config_name):
                 config = load_config(config_name)
 
-                self.assertEqual(set(config), REQUIRED_SECTIONS)
+                self.assertTrue(REQUIRED_SECTIONS - {"scheduler"} <= set(config))
+                self.assertTrue(set(config) <= REQUIRED_SECTIONS)
                 self.assertIn(
                     config["model"]["name"].strip().lower(),
                     registered_models,

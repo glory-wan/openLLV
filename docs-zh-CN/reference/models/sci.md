@@ -27,6 +27,20 @@ SCI 是分阶段进行照明估计与校准的模型，在 openLLV 中以注册�
 
 构造器为 `SCI(config=None, **kwargs)`。`LLVModel` 依次合并共享默认值、`config` 和 `kwargs`，因此关键字覆盖值优先于 `config` 中的同名键。增强器估计照明图，训练时每个阶段再校准下一阶段输入。`mode="train"` 时，`forward(x)` 返回标准字典：`pred` 为最终反射图，`aux` 含 `enhanced`、`ilist`、`rlist`、`inlist` 和 `attlist`。`mode="inference"` 时只返回第一阶段增强张量。网络层硬编码为三通道输入；更改 `input_channels` 不会改变这些层。
 
+增强网络和校准网络内部的残差块共享参数。每个独立模块仅初始化一次，与官方 CVPR 2022 训练脚本一致。训练初始输入保留 `x.clone()`：该输入未被原地修改，因此复制保留了数值和梯度。推理时模型仍持有校准模块，但不会调用它；在增强网络权重与评估模式相同的条件下，它不会影响返回的图像。
+
+### 训练损失
+
+`Sci_Loss` 使用 `aux["ilist"]`（各阶段光照估计）与 `aux["inlist"]`（各阶段输入）。对每个阶段 `t` 计算 `1.5 * MSE(ilist[t], inlist[t]) + SmoothLoss(inlist[t], ilist[t])`，再将全部阶段损失求和，不取阶段平均。平滑权重由当前阶段输入引导。对于 SCI 结构化训练输出，`pred` 和 `aux["enhanced"]` 均不作为损失的作用对象。平滑项的现有公式与随输入设备创建常量的方式保持不变。
+
+Trainer 在训练和验证时都会为该损失请求结构化训练输出；推理仍仅返回增强张量。兼容旧版 `loss_inputs` 字典。阶段列表必须是非空且等长的 list 或 tuple，否则抛出 `ValueError`。直接传入张量时计算单个输入／光照对的损失；仅包含 `enhanced`/`pred` 的旧版字典保留原有单对计算行为。
+
+### 内置训练配置
+
+`llv.train("SCI", ...)` 加载 `openLLV/deepLearning/config/SCI.yaml`。优化器为 Adam，`lr=0.0003`、`betas=[0.9, 0.999]`、`weight_decay=0.0003`。YAML 不包含 scheduler 分区，因此 Trainer 使用默认值禁用学习率调度。训练采用 `epochs=100`，梯度范数裁剪阈值为 `5.0`。100 轮是有意保留的设置，与官方训练脚本默认的 1000 轮不同。其他内置设置保持不变，包括 `batch_size=2`、`num_workers=4`、`seed=42` 和 `amp=false`。
+
+上述初始化与损失约定对应官方 CVPR 版的[模型](https://github.com/vis-opt-group/SCI/blob/main/CVPR/model.py)、[损失](https://github.com/vis-opt-group/SCI/blob/main/CVPR/loss.py)和[训练脚本](https://github.com/vis-opt-group/SCI/blob/main/CVPR/train.py)。
+
 ## Parameters
 
 | 参数 | 类型 | 默认值 | 含义 | 约束 |

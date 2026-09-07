@@ -21,18 +21,33 @@ class Sci_Loss(BaseLoss):
         self.smooth_loss = SmoothLoss()
 
     def forward(self, input, enhanced):
-        """Compute SCI training loss.
+        """Sum illumination fidelity and smoothness losses over SCI stages.
 
         Args:
-            input: Low-light input tensor.
-            enhanced: Enhanced tensor or structured model output containing
-                ``pred`` and optional ``loss_inputs``.
+            input: Low-light input tensor, or the input of a single stage.
+            enhanced: Structured SCI output with ``ilist`` and ``inlist`` in
+                ``aux`` (or legacy ``loss_inputs``). A tensor computes one
+                stage's illumination loss. Legacy ``enhanced``/``pred``-only
+                mappings retain their single-pair behavior.
 
         Returns:
             Scalar reference-free loss tensor.
         """
         if isinstance(enhanced, dict):
             loss_inputs = get_loss_inputs(enhanced)
+            if 'ilist' in loss_inputs or 'inlist' in loss_inputs:
+                ilist = loss_inputs.get('ilist')
+                inlist = loss_inputs.get('inlist')
+                if (not isinstance(ilist, (list, tuple))
+                        or not isinstance(inlist, (list, tuple))
+                        or not ilist or len(ilist) != len(inlist)):
+                    raise ValueError(
+                        "SCI loss requires non-empty ilist and inlist of equal length."
+                    )
+                return sum(
+                    self(stage_input, illumination)
+                    for stage_input, illumination in zip(inlist, ilist)
+                )
             enhanced = loss_inputs.get('enhanced', enhanced.get('pred'))
 
         Fidelity_Loss = self.l2_loss(enhanced, input)
@@ -69,8 +84,8 @@ class SmoothLoss(nn.Module):
         """Compute weighted smoothness loss.
 
         Args:
-            input: Low-light input tensor.
-            output: Enhanced output tensor.
+            input: Stage input tensor used to guide the smoothness weights.
+            output: Stage illumination estimate.
 
         Returns:
             Scalar smoothness loss tensor.

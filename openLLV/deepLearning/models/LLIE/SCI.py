@@ -190,7 +190,7 @@ class SCI(LLVModel):
         self._init_weights()
 
     def _init_weights(self):
-        """Initialize convolution and batch-normalization weights."""
+        """Initialize each independent module once, including shared blocks."""
         def weights_init(m):
             if isinstance(m, nn.Conv2d):
                 m.weight.data.normal_(0, 0.02)
@@ -202,13 +202,11 @@ class SCI(LLVModel):
                     m.bias.data.zero_()
 
         self.enhance.in_conv.apply(weights_init)
-        for block in self.enhance.blocks:
-            block.apply(weights_init)
+        self.enhance.conv.apply(weights_init)
         self.enhance.out_conv.apply(weights_init)
 
         self.calibrate.in_conv.apply(weights_init)
-        for block in self.calibrate.blocks:
-            block.apply(weights_init)
+        self.calibrate.convs.apply(weights_init)
         self.calibrate.out_conv.apply(weights_init)
 
     def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Dict[str, Any]]:
