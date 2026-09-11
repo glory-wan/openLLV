@@ -66,3 +66,4 @@ include = ["openLLV*"]
 
 [tool.setuptools.package-data]
 "openLLV.deepLearning" = ["config/*.yaml"]
+"openLLV.deepLearning.models.LLIE._llflow" = ["NOTICE.md", "licenses/*"]

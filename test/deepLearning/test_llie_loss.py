@@ -255,19 +255,10 @@ class ModelLossComputeTests(unittest.TestCase):
         output = {
             "pred": self.prediction,
             "aux": {
-                "condition": self.input_tensor,
-                "flow_forward": lambda target, condition: (
-                    torch.zeros_like(target),
-                    target.new_zeros(target.shape[0]),
-                ),
+                "nll": self.target.new_ones(self.target.shape[0]),
             },
         }
-        loss_function = LLIELoss.LLFlow_Loss(
-            nll_weight=0,
-            reconstruction_weight=1,
-            color_weight=0,
-            tv_weight=0,
-        )
+        loss_function = LLIELoss.LLFlow_Loss()
         loss, prediction = loss_function.compute(
             input_tensor=self.input_tensor,
             model_output=output,

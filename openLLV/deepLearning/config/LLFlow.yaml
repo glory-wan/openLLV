@@ -1,51 +1,59 @@
+# Official standard LOL-pc architecture, adapted to openLLV's epoch Trainer.
+# See docs/reference/models/llflow.md for exact reproduction limitations.
 model:
   name: LLFlow
   params:
     input_channels: 3
-    condition_channels: 32
-    condition_blocks: 4
-    flow_layers: 8
-    flow_hidden_channels: 64
-    scale_clamp: 2.0
-    sample_temperature: 0.0
+    nf: 64
+    nb: 24
+    K: 12
+    L: 3
+    train_gt_ratio: 0.2
+    quant: 32
+    inference_padding: reflect16
 data:
-  dataset: CommonDataset
+  dataset: LLFlowDataset
   root_dir: path/to/your/dataset
   train_split: train
   val_split: val
-  batch_size: 2
-  workers: 4
-  pin_memory: true
+  batch_size: 16
+  # Trainer shares this batch size with full-resolution validation. Lower it
+  # on limited VRAM; recompute epochs/milestones for the new updates per epoch.
+  workers: 2
+  pin_memory: false
+  drop_last: true
   return_filename: true
+  train_params:
+    crop_size: 160
+    use_flip: true
 loss:
   name: llflow
-  params:
-    nll_weight: 1.0
-    reconstruction_weight: 1.0
-    color_weight: 0.1
-    tv_weight: 0.01
-    include_constant: false
+  params: {}
   output_index: null
   output_key: null
 optimizer:
   name: adam
-  lr: 0.0001
+  lr: 0.0005
   params:
-    betas: [0.9, 0.999]
+    betas: [0.9, 0.999] # Actual upstream Adam defaults; beta1/beta2 keys there are unused.
     weight_decay: 0.0
 scheduler:
-  name: cosineannealinglr
+  # Epoch approximation for 485 LOL training images, batch 16, drop_last=true.
+  # Unchanged Trainer cannot express 40000 steps or 3000-step warmup.
+  name: multisteplr
   params:
-    T_max: 100
-    eta_min: 1.0e-06
+    milestones: [667, 1000, 1200, 1267]
+    gamma: 0.5
 train:
-  epochs: 100
+  epochs: 1334 # 40020 updates on 485 images; adjust for other dataset sizes.
   device: null
   output_dir: null
   save_every: 0
   validate_every: 1
   log_every: 10
   grad_clip: null
-  amp: false
-  seed: 42
+  amp: true
+  seed: 10
+  cudnn_deterministic: false
+  cudnn_benchmark: true
   resume: null

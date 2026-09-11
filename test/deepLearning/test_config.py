@@ -154,7 +154,10 @@ class BuiltInConfigCompatibilityTests(unittest.TestCase):
                     config["data"]["dataset"].strip().lower(),
                     registered_datasets,
                 )
-                self.assertEqual(config["data"]["dataset"], "CommonDataset")
+                self.assertEqual(
+                    config["data"]["dataset"],
+                    "LLFlowDataset" if config_name == "LLFlow" else "CommonDataset",
+                )
                 self.assertIsNone(config["train"]["device"])
                 self.assertIsNone(config["train"]["output_dir"])
                 self.assertIsInstance(config["model"]["params"], dict)

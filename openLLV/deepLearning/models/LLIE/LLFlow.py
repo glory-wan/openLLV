@@ -1,328 +1,163 @@
-"""
-LLFlow model for low-light enhancement with normalizing flow.
+"""Official standard LLFlow (LOL-pc) adapted to the LLVModel interface.
 
-Original paper: Low-Light Image Enhancement with Normalizing Flow
-Paper link: https://doi.org/10.1609/aaai.v36i3.20162
-Official source code: https://github.com/wyf0912/LLFlow
-Official project url: https://wyf0912.github.io/LLFlow/
+Upstream: https://github.com/wyf0912/LLFlow
+Commit: 115da161a96de868d67494a32db848e31f85bbc1
+Copyright (c) 2021 Yufei Wang. CC BY-NC-SA 4.0; see _llflow/licenses/.
+The adapter preserves official parameter names and conditional Gaussian NLL.
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+import math
+import random
+from collections import OrderedDict
+from pathlib import Path
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from ..BaseModel import LLVModel
-
-
-class LLFlowConditionEncoder(nn.Module):
-    """Conditional encoder for low-light image features."""
-
-    def __init__(
-        self,
-        input_channels: int = 3,
-        condition_channels: int = 32,
-        num_blocks: int = 4,
-    ) -> None:
-        """Initialize the conditional encoder.
-
-        Args:
-            input_channels: Number of input image channels.
-            condition_channels: Number of conditional feature channels.
-            num_blocks: Number of residual convolution blocks.
-        """
-        super().__init__()
-        self.head = nn.Sequential(
-            nn.Conv2d(input_channels, condition_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-        self.blocks = nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.Conv2d(condition_channels, condition_channels, kernel_size=3, padding=1),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    nn.Conv2d(condition_channels, condition_channels, kernel_size=3, padding=1),
-                )
-                for _ in range(num_blocks)
-            ]
-        )
-        self.tail = nn.Sequential(
-            nn.Conv2d(condition_channels, condition_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
-        """Extract conditional features.
-
-        Args:
-            image: Low-light input image tensor.
-
-        Returns:
-            Conditional feature tensor.
-        """
-        features = self.head(image)
-        for block in self.blocks:
-            features = features + block(features)
-        return self.tail(features)
-
-
-class LLFlowAffineCoupling(nn.Module):
-    """Conditional affine coupling layer."""
-
-    def __init__(
-        self,
-        channels: int,
-        condition_channels: int,
-        hidden_channels: int,
-        *,
-        flip: bool = False,
-        scale_clamp: float = 2.0,
-    ) -> None:
-        """Initialize an affine coupling layer.
-
-        Args:
-            channels: Number of image channels transformed by the flow.
-            condition_channels: Number of condition feature channels.
-            hidden_channels: Number of hidden coupling network channels.
-            flip: Whether to flip channel order before and after coupling.
-            scale_clamp: Clamp value for log-scale prediction.
-        """
-        super().__init__()
-        self.channels = channels
-        self.split_channels = channels // 2
-        self.remaining_channels = channels - self.split_channels
-        self.flip = flip
-        self.scale_clamp = float(scale_clamp)
-        self.net = nn.Sequential(
-            nn.Conv2d(self.split_channels + condition_channels, hidden_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(hidden_channels, hidden_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(hidden_channels, self.remaining_channels * 2, kernel_size=3, padding=1),
-        )
-        nn.init.zeros_(self.net[-1].weight)
-        nn.init.zeros_(self.net[-1].bias)
-
-    def forward(
-        self,
-        value: torch.Tensor,
-        condition: torch.Tensor,
-        *,
-        reverse: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Run forward or reverse affine coupling.
-
-        Args:
-            value: Flow tensor.
-            condition: Conditional feature tensor.
-            reverse: Whether to run the inverse transform.
-
-        Returns:
-            Tuple containing transformed tensor and log determinant.
-        """
-        if self.flip:
-            value = torch.flip(value, dims=[1])
-
-        first, second = value[:, : self.split_channels], value[:, self.split_channels :]
-        scale_shift = self.net(torch.cat([first, condition], dim=1))
-        shift, log_scale = torch.chunk(scale_shift, chunks=2, dim=1)
-        log_scale = self.scale_clamp * torch.tanh(log_scale / self.scale_clamp)
-
-        if reverse:
-            second = (second - shift) * torch.exp(-log_scale)
-            logdet = -self._sum_logdet(log_scale)
-        else:
-            second = second * torch.exp(log_scale) + shift
-            logdet = self._sum_logdet(log_scale)
-
-        output = torch.cat([first, second], dim=1)
-        if self.flip:
-            output = torch.flip(output, dims=[1])
-        return output, logdet
-
-    @staticmethod
-    def _sum_logdet(log_scale: torch.Tensor) -> torch.Tensor:
-        """Sum log-scale values per sample.
-
-        Args:
-            log_scale: Log-scale tensor.
-
-        Returns:
-            Per-sample log determinant tensor.
-        """
-        return log_scale.flatten(start_dim=1).sum(dim=1)
+from ._llflow.ConditionEncoder import ConEncoder1
+from ._llflow.FlowUpsamplerNet import FlowUpsamplerNet
+from ._llflow.flow import GaussianDiag, squeeze2d
+from ._llflow.options import standard_options
+from openLLV.data.llflow_preprocessing import prepare_llflow_input, reflect_pad16
 
 
 class LLFlow(LLVModel):
+    """Standard 64-channel, 24-RRDB, three-level conditional flow.
+
+    Input is RGB in [0, 1], or the six-channel prepared LLFlowDataset input.
+    Trainer supplies paired_image through its existing paired-forward hook.
+    """
 
     task = "llie"
     aliases = []
+    requires_paired_forward = True
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Initialize LLFlow.
+    def _get_default_config(self):
+        config = super()._get_default_config()
+        config.update(nf=64, nb=24, K=12, L=3, train_gt_ratio=0.2,
+                      quant=32, inference_padding="reflect16", mode="inference")
+        return config
 
-        Args:
-            config: Optional model configuration dictionary.
-            **kwargs: Configuration overrides.
-        """
-        super().__init__(config, **kwargs)
-
-    def _get_default_config(self) -> Dict[str, Any]:
-        """Get default LLFlow configuration.
-
-        Returns:
-            Default configuration dictionary.
-        """
-        default_config = super()._get_default_config()
-        default_config.update(
-            {
-                "condition_channels": 32,
-                "condition_blocks": 4,
-                "flow_layers": 8,
-                "flow_hidden_channels": 64,
-                "scale_clamp": 2.0,
-                "sample_temperature": 0.0,
-                "mode": "inference",
-            }
-        )
-        return default_config
-
-    def _validate_config(self) -> None:
-        """Validate LLFlow configuration.
-
-        Raises:
-            ValueError: If a configuration value is invalid.
-        """
+    def _validate_config(self):
         super()._validate_config()
-        if int(self.config["input_channels"]) < 2:
-            raise ValueError("'input_channels' must be at least 2 for affine coupling.")
-        for key in ("condition_channels", "condition_blocks", "flow_layers", "flow_hidden_channels"):
-            if int(self.config[key]) <= 0:
-                raise ValueError(f"'{key}' must be positive.")
-        if float(self.config["scale_clamp"]) <= 0:
-            raise ValueError("'scale_clamp' must be positive.")
-        if float(self.config["sample_temperature"]) < 0:
-            raise ValueError("'sample_temperature' must be non-negative.")
+        removed = {"condition_channels", "condition_blocks", "flow_layers",
+                   "flow_hidden_channels", "scale_clamp", "sample_temperature"}
+        legacy = removed.intersection(self.config)
+        if legacy:
+            raise ValueError("Removed simplified LLFlow configuration: " + ", ".join(sorted(legacy)))
+        if self.config["input_channels"] != 3 or self.config["nf"] != 64 or self.config["L"] != 3:
+            raise ValueError("Standard LLFlow requires input_channels=3, nf=64 and L=3.")
+        for key, minimum in (("nb", 8), ("K", 1)):
+            value = self.config[key]
+            if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+                raise ValueError(f"{key} must be an integer >= {minimum}.")
+        ratio = float(self.config["train_gt_ratio"])
+        if not math.isfinite(ratio) or not 0 <= ratio <= 1:
+            raise ValueError("train_gt_ratio must be in [0, 1].")
+        if not math.isfinite(float(self.config["quant"])) or float(self.config["quant"]) <= 0:
+            raise ValueError("quant must be positive and finite.")
+        if self.config["inference_padding"] not in {"reflect16", "none"}:
+            raise ValueError("inference_padding must be 'reflect16' or 'none'.")
         if self.config["mode"] not in {"train", "inference"}:
-            raise ValueError("'mode' must be 'train' or 'inference'.")
+            raise ValueError("mode must be 'train' or 'inference'.")
 
-    def _init_model(self) -> None:
-        """Initialize LLFlow encoder and flow layers."""
-        channels = int(self.config["input_channels"])
-        condition_channels = int(self.config["condition_channels"])
-        self.condition_encoder = LLFlowConditionEncoder(
-            input_channels=channels,
-            condition_channels=condition_channels,
-            num_blocks=int(self.config["condition_blocks"]),
+    def _init_model(self):
+        self.opt = standard_options(self.config)
+        self.RRDB = ConEncoder1(3, 3, 64, self.config["nb"], 32, 1, self.opt)
+        self.flowUpsamplerNet = FlowUpsamplerNet(
+            (160, 160, 3), 64, self.config["K"],
+            flow_coupling="CondAffineSeparatedAndCond", opt=self.opt,
         )
-        self.flow_layers = nn.ModuleList(
-            [
-                LLFlowAffineCoupling(
-                    channels=channels,
-                    condition_channels=condition_channels,
-                    hidden_channels=int(self.config["flow_hidden_channels"]),
-                    flip=bool(index % 2),
-                    scale_clamp=float(self.config["scale_clamp"]),
-                )
-                for index in range(int(self.config["flow_layers"]))
-            ]
-        )
-        self._init_weights()
 
-    def _init_weights(self) -> None:
-        """Initialize convolution weights."""
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d):
-                if module.weight.abs().sum() > 0:
-                    nn.init.kaiming_normal_(module.weight, a=0.2, nonlinearity="leaky_relu")
-                if module.bias is not None:
-                    nn.init.zeros_(module.bias)
+    def rrdbPreprocessing(self, low):
+        """Extract and concatenate the official multi-scale RRDB features."""
+        features = self.RRDB(low, get_steps=True)
+        concat = torch.cat([features[f"block_{i}"] for i in (1, 3, 5, 7)], dim=1)
+        for key in ("last_lr_fea", "fea_up1", "fea_up2", "fea_up4", "fea_up0"):
+            features[key] = torch.cat([
+                features[key], F.interpolate(concat, features[key].shape[-2:])
+            ], dim=1)
+        return features
 
-    def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Dict[str, Any]]:
-        """Run an LLFlow forward pass.
+    def encode(self, target, condition, *, add_gt_noise=False):
+        """Return (latent, per-sample NLL, logdet) with the official prior.
 
-        Args:
-            x: Low-light input tensor with shape ``[B, C, H, W]``.
-
-        Returns:
-            Training mode: standardized output dict with flow helpers.
-            Inference mode: enhanced image tensor.
+        condition is the dictionary returned by rrdbPreprocessing. The GT-prior
+        choice is one Python random draw per batch, as in upstream normal_flow.
         """
-        condition = self.condition_encoder(x)
-        latent = self._sample_latent(x)
-        enhanced = self.flow_reverse(latent, condition)
+        pixels = target.shape[-2] * target.shape[-1]
+        logdet = torch.zeros_like(target[:, 0, 0, 0])
+        value = target
+        if add_gt_noise:
+            quant = float(self.config["quant"])
+            value = value + (torch.rand_like(value) - 0.5) / quant
+            logdet = logdet - math.log(quant) * pixels
+        latent, logdet = self.flowUpsamplerNet(
+            rrdbResults=condition, gt=value, logdet=logdet, reverse=False,
+        )
+        if random.random() > float(self.config["train_gt_ratio"]):
+            mean = squeeze2d(condition["color_map"], 8)
+        else:
+            mean = squeeze2d(target / (target.sum(dim=1, keepdim=True) + 1e-4), 8)
+        objective = logdet.clone() + GaussianDiag.logp(mean, latent.new_tensor(0.0), latent)
+        return latent, -objective / (math.log(2.0) * pixels), logdet
 
-        if self.config["mode"] == "train":
+    def decode(self, condition):
+        """Decode the predicted color map, not a zero/random latent tensor."""
+        latent = squeeze2d(condition["color_map"], 8)
+        image, _ = self.flowUpsamplerNet(
+            rrdbResults=condition, z=latent, logdet=latent.new_zeros(latent.shape[0]),
+            reverse=True, eps_std=0,
+        )
+        return image
+
+    def forward(self, x, paired_image=None, *, add_gt_noise=False):
+        """Enhance RGB, or encode paired GT for Trainer's NLL loss.
+
+        Paired training/validation requires matching spatial dimensions divisible
+        by eight. Inference reflect16 padding follows official test_unpaired.py;
+        set inference_padding='none' for the unpadded core computation.
+        """
+        if x.ndim != 4 or x.shape[1] not in (3, 6) or not x.is_floating_point():
+            raise ValueError("LLFlow expects floating BCHW RGB or prepared six-channel input.")
+        if min(x.shape[-2:]) < 1:
+            raise ValueError("Input spatial dimensions must be positive.")
+        original_h, original_w = x.shape[-2:]
+        top = left = 0
+        if paired_image is not None:
+            if paired_image.shape != (x.shape[0], 3, original_h, original_w):
+                raise ValueError("Paired GT must be RGB and match the input batch and spatial size.")
+        elif self.config["mode"] == "train":
+            raise ValueError("LLFlow training requires paired_image (normal-light GT).")
+        elif self.config["inference_padding"] == "reflect16":
+            x, (top, _, left, _) = reflect_pad16(x)
+        if x.shape[-2] % 8 or x.shape[-1] % 8:
+            raise ValueError("LLFlow core requires height and width divisible by 8.")
+        low = prepare_llflow_input(x) if x.shape[1] == 3 else x
+        condition = self.rrdbPreprocessing(low)
+        if paired_image is not None:
+            latent, nll, logdet = self.encode(paired_image, condition, add_gt_noise=add_gt_noise)
+            # Encode first so ActNorm initializes from GT, never generated images.
+            # No reverse loss is added; this only preserves the image-output contract.
+            with torch.no_grad():
+                prediction = self.decode(condition)
             return self._format_output(
-                pred=enhanced,
-                aux={
-                    "condition": condition,
-                    "flow_forward": self.flow_forward,
-                    "flow_reverse": self.flow_reverse,
-                    "latent": latent,
-                },
+                prediction, aux={"nll": nll, "latent": latent, "logdet": logdet},
                 meta={"mode": self.config["mode"]},
             )
+        prediction = self.decode(condition)
+        return prediction[:, :, top:top + original_h, left:left + original_w]
 
-        return enhanced
+    def load_official_weights(self, path):
+        """Strictly load a local official *_G.pth state dictionary; return self.
 
-    def flow_forward(self, image: torch.Tensor, condition: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Map a normal-light image to latent space.
-
-        Args:
-            image: Normal-light image tensor in ``[0, 1]``.
-            condition: Conditional features extracted from the low-light image.
-
-        Returns:
-            Tuple containing latent tensor and per-sample log determinant.
+        A leading DataParallel 'module.' is removed. Use save_model afterwards
+        to create a checkpoint accepted by the unchanged Predictor.
         """
-        value = self._logit(image)
-        total_logdet = value.new_zeros(value.shape[0])
-        for layer in self.flow_layers:
-            value, logdet = layer(value, condition, reverse=False)
-            total_logdet = total_logdet + logdet
-        return value, total_logdet
-
-    def flow_reverse(self, latent: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        """Map latent variables to enhanced image space.
-
-        Args:
-            latent: Latent tensor.
-            condition: Conditional low-light features.
-
-        Returns:
-            Enhanced image tensor in ``[0, 1]``.
-        """
-        value = latent
-        for layer in reversed(self.flow_layers):
-            value, _ = layer(value, condition, reverse=True)
-        return torch.sigmoid(value)
-
-    def _sample_latent(self, reference: torch.Tensor) -> torch.Tensor:
-        """Sample or create latent tensor for inference.
-
-        Args:
-            reference: Reference image tensor.
-
-        Returns:
-            Latent tensor with the same shape as ``reference``.
-        """
-        temperature = float(self.config["sample_temperature"])
-        if temperature == 0:
-            return torch.zeros_like(reference)
-        return torch.randn_like(reference) * temperature
-
-    @staticmethod
-    def _logit(image: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
-        """Convert image values from ``[0, 1]`` to logit space.
-
-        Args:
-            image: Image tensor.
-            eps: Clamp value for numerical stability.
-
-        Returns:
-            Logit-space tensor.
-        """
-        image = image.clamp(eps, 1.0 - eps)
-        return torch.log(image) - torch.log1p(-image)
+        state = torch.load(Path(path), map_location="cpu", weights_only=True)
+        if not isinstance(state, dict) or not state or not all(torch.is_tensor(v) for v in state.values()):
+            raise ValueError("Expected a pure official LLFlow state dictionary.")
+        state = OrderedDict((k[7:] if k.startswith("module.") else k, v) for k, v in state.items())
+        self.load_state_dict(state, strict=True)
+        return self
