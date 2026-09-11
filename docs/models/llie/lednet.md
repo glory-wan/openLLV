@@ -39,14 +39,12 @@ enhanced, saved_path = llv.predict(
 )
 ```
 
-Training example:
+Training example (the built-in config normalizes input/GT to `[-1,1]` and enables paired `256x256` cropping and synchronized augmentation only for training; see the [reference](../../reference/models/lednet.md)):
 
 ```python
 llv.train(
-    model="LEDNet",
-    dataset="CommonDataset",
+    config="LEDNet",
     root_dir="datasets/my_dataset",
-    loss="lednet",
     epochs=10,
     batch_size=4,
 )

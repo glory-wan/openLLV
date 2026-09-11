@@ -56,12 +56,28 @@ openLLV.train(config=None, **kwargs)
 | `resume`, `resume_path` | `Optional[Union[str, Path]]` | `None` | `train.resume` 的平铺别名。 | checkpoint 必须可由 Trainer 加载。 |
 | `strict_resume` | `bool` | `True` | 映射到 `train.strict_resume`。 | 控制 state dictionary 严格加载。 |
 | `seed` | `Optional[int]` | `42` | 映射到 `train.seed`；`None` 不设置随机种子。 | 整数或 `None`；拒绝布尔值。 |
+| `cudnn_deterministic` | `bool` | `True` | 映射到 `train.cudnn_deterministic`；选择确定性 cuDNN 算法。LEDNet YAML 覆盖为 `False`。 | 仅在 `seed` 非 `None` 时设置；cuDNN 标志作用于整个进程。 |
+| `cudnn_benchmark` | `bool` | `False` | 映射到 `train.cudnn_benchmark`；测试 cuDNN 算法性能。LEDNet YAML 覆盖为 `True`。 | 仅在 `seed` 非 `None` 时设置；启用 benchmark 不保证结果可复现。 |
 | `device` | `Union[str, torch.device]` | 最佳可用设备 | 映射到 `train.device`；默认依次选择 CUDA、MPS、CPU。 | 请求不可用 CUDA/MPS 抛 `RuntimeError`。 |
 | `device_ids` | `Optional[Union[List[int], Tuple[int, ...]]]` | `None` | 映射到 `train.device_ids`；两个或更多 CUDA 序号启用单进程 `DataParallel`。 | 必须是非空、无重复、非负且可用的 CUDA 序号；第一项必须与显式带序号的 `device` 一致。 |
 | `progress_bar` | `bool` | `True` | 映射到 `train.progress_bar`。 | 控制 tqdm 训练/验证进度条。 |
 | `model`、`loss`、`optimizer`、`scheduler`、`train`（字典形式） | `Dict[str, Any]` | 对应默认节 | 这些名称的值为字典时，直接合并进对应嵌套节，而非作为平铺别名。 | 合并后各节必须为字典。 |
 
 任何未知的平铺 `**kwargs` 键都会抛 `TypeError`，不会静默忽略。
+
+### CommonDataset 可选预处理
+
+通过共享 `data_params`（`data.params`）或分组 `train_params` / `val_params` 传入以下构造参数。分组设置覆盖共享设置；它们不是新增的 Trainer 平铺参数。
+
+| 参数 | 类型 | 默认值 | 行为 / 约束 |
+| --- | --- | --- | --- |
+| `mean` | `Optional[Sequence[float]]` | `None` | 使用有限的逐通道均值归一化输入与 GT 张量。须与 `std` 同时提供；两序列须非空、等长，且与图像通道兼容。 |
+| `std` | `Optional[Sequence[float]]` | `None` | 逐通道标准差，须为有限正数；归一化在独立图像变换（含自定义变换）之后执行。 |
+| `crop_size` | `Optional[int]` | `None` | 自定义公共变换及张量转换前进行同步随机方形裁剪。须为非布尔正整数；尺寸不足或配对尺寸不一致抛 `ValueError`。 |
+| `use_flip` | `bool` | `False` | 以 0.5 概率同步水平翻转。 |
+| `use_rot` | `bool` | `False` | 垂直翻转和宽高转置分别以独立的 0.5 概率同步执行。 |
+
+空间操作依次为裁剪、水平翻转、垂直翻转、转置，再执行现有 `common_transform`；随后执行 resize、独立图像变换及可选归一化。在哪个 split 提供参数，就在哪个 split 生效；随机操作应放入 `train_params`，避免作用于验证集。LEDNet YAML 为两个 split 配置 mean/std 0.5，仅训练启用裁剪和增强。保存的模型 `image_range="minus_one_one"` 使 Predictor 自动转换值域；自定义训练 mean/std 时须保持模型值域标记一致。
 
 ## Returns
 

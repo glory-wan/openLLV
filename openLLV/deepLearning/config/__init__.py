@@ -72,6 +72,8 @@ DEFAULT_TRAIN_CONFIG: Dict[str, Any] = {
         "resume": None,
         "strict_resume": True,
         "seed": 42,
+        "cudnn_deterministic": True,
+        "cudnn_benchmark": False,
         "device": get_default_device(),
         "device_ids": None,
         "progress_bar": True,

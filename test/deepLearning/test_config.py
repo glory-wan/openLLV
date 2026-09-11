@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import torch
+from PIL import Image
 from openLLV.data.datasets import BaseDataset
 from openLLV.deepLearning.config import (
     CONFIG_DIR,
@@ -52,6 +54,28 @@ REQUIRED_SECTIONS = {
 
 
 class BuiltInConfigDiscoveryTests(unittest.TestCase):
+    def test_lednet_train_and_validation_data_transforms(self):
+        trainer = Trainer.__new__(Trainer)
+        trainer.config = Trainer._with_defaults(load_config("LEDNet"))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trainer.config["data"]["root_dir"] = temp_dir
+            for split in ("train", "val"):
+                for name, value in (("input", 0), ("target", 255)):
+                    directory = Path(temp_dir) / split / name
+                    directory.mkdir(parents=True)
+                    Image.new("RGB", (288, 280), (value,) * 3).save(directory / "sample.png")
+                dataset = trainer._build_dataset(split, split, f"{split}_input_dir", f"{split}_target_dir")
+                if split == "val":
+                    with patch("random.random", side_effect=AssertionError("validation augmentation")), patch(
+                        "random.randint", side_effect=AssertionError("validation crop"),
+                    ):
+                        source, target, _ = dataset[0]
+                else:
+                    source, target, _ = dataset[0]
+                self.assertEqual(source.shape, (3, 256, 256) if split == "train" else (3, 280, 288))
+                torch.testing.assert_close(source, torch.full_like(source, -1))
+                torch.testing.assert_close(target, torch.ones_like(target))
+
     def test_config_module_is_a_package_with_all_migrated_yaml_files(self):
         self.assertTrue(CONFIG_DIR.is_dir())
         self.assertEqual(set(list_available_configs()), EXPECTED_CONFIGS)

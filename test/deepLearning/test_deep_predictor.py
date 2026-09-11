@@ -127,6 +127,25 @@ class ZeroDCEModelTests(unittest.TestCase):
         self.assertEqual(output["pred"].shape, (1, 3, 24, 24))
         self.assertEqual(output["aux"]["r"].shape, (1, 3, 24, 24))
 
+    def test_plusplus_default_scale_supports_512_training_and_odd_inference(self):
+        from openLLV.deepLearning.loss.LLIELoss.ZeroDCE_Loss import ZeroDCE_extension_Loss
+
+        model = ZeroDCEPlusPlus().train_mode()
+        image = torch.rand(1, 3, 512, 512)
+        output = model(image)
+        self.assertEqual(output["pred"].shape, image.shape)
+        self.assertEqual(output["aux"]["r"].shape, image.shape)
+        loss = ZeroDCE_extension_Loss()(image, output)
+        loss.backward()
+        self.assertTrue(torch.isfinite(loss))
+        for parameter in model.parameters():
+            self.assertIsNotNone(parameter.grad)
+            self.assertTrue(torch.isfinite(parameter.grad).all())
+
+        model.eval_mode()
+        with torch.no_grad():
+            self.assertEqual(model(torch.rand(1, 3, 37, 53)).shape, (1, 3, 37, 53))
+
 
 class PredictorInitializationTests(unittest.TestCase):
     def test_accepts_any_llvmodel_instance_and_owns_device(self):
@@ -255,6 +274,20 @@ class PredictorInitializationTests(unittest.TestCase):
 
 
 class PredictorInputAndInferenceTests(unittest.TestCase):
+    def test_checkpoint_range_normalizes_input_and_restores_output(self):
+        model = PredictorIdentityModel(config={"image_range": "minus_one_one"})
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = model.save_model(temp_dir)
+            predictor = Predictor(checkpoint, device="cpu")
+            with patch.object(predictor.model, "forward", wraps=predictor.model.forward) as forward:
+                result = predictor._predict_tensor(torch.tensor([0.0, 0.5, 1.0]).view(1, 1, 1, 3))
+            torch.testing.assert_close(forward.call_args.args[0], torch.tensor([-1.0, 0.0, 1.0]).view(1, 1, 1, 3))
+            torch.testing.assert_close(result, torch.tensor([0.0, 0.5, 1.0]).view(1, 1, 1, 3))
+            predictor.model.config["image_range"] = "zero_one"
+            with patch.object(predictor.model, "forward", wraps=predictor.model.forward) as forward:
+                predictor._predict_tensor(torch.zeros(1, 3, 8, 8))
+            self.assertEqual(forward.call_args.args[0].min().item(), 0.0)
+
     def test_predict_single_accepts_numpy_pil_path_and_tensor_without_saving(self):
         predictor = Predictor(PredictorIdentityModel(), device="cpu")
         pil = Image.fromarray(sample_rgb(64))
@@ -829,6 +862,15 @@ class PredictorHelperTests(unittest.TestCase):
             self.assertFalse(Predictor._looks_like_file_path(root / "new-dir"))
 
     def test_tensor_to_pil_supports_gray_rgb_rgba_and_clamping(self):
+        for channels in (1, 3, 4):
+            with self.subTest(channels=channels):
+                values = torch.tensor([-1.0, 0.5, 2.0]).view(1, 1, 3)
+                image = Predictor._tensor_to_pil(values.repeat(channels, 1, 1))
+                expected = np.array([[0, 128, 255]], dtype=np.uint8)
+                if channels != 1:
+                    expected = np.repeat(expected[..., None], channels, axis=2)
+                np.testing.assert_array_equal(np.asarray(image), expected)
+
         gray = Predictor._tensor_to_pil(torch.tensor([[[[-1.0, 2.0]]]]))
         rgb = Predictor._tensor_to_pil(torch.ones(3, 2, 2))
         rgba = Predictor._tensor_to_pil(torch.ones(1, 4, 2, 2))

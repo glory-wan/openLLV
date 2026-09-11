@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import random
 import threading
 import time
 import unittest
@@ -169,6 +170,30 @@ def trainer_config(
 
 
 class TrainerConfigTests(unittest.TestCase):
+    def test_lednet_seed_and_cudnn_settings(self):
+        from openLLV.deepLearning.config import load_config
+
+        settings = load_config("LEDNet")["train"]
+        flags = torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark
+        try:
+            draws = []
+            for _ in range(2):
+                Trainer._set_seed(
+                    settings["seed"],
+                    cudnn_deterministic=settings["cudnn_deterministic"],
+                    cudnn_benchmark=settings["cudnn_benchmark"],
+                )
+                draws.append((random.random(), np.random.rand(), torch.rand(1).item()))
+            self.assertEqual(settings["seed"], 10)
+            self.assertEqual(draws[0], draws[1])
+            self.assertFalse(torch.backends.cudnn.deterministic)
+            self.assertTrue(torch.backends.cudnn.benchmark)
+            Trainer._set_seed(10)
+            self.assertTrue(torch.backends.cudnn.deterministic)
+            self.assertFalse(torch.backends.cudnn.benchmark)
+        finally:
+            torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark = flags
+
     def test_default_config_is_independent_and_uses_current_dataset(self):
         first = get_default_train_config()
         second = get_default_train_config()

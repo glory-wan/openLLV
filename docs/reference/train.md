@@ -56,12 +56,28 @@ openLLV.train(config=None, **kwargs)
 | `resume`, `resume_path` | `Optional[Union[str, Path]]` | `None` | Alias flat keys for `train.resume`. | Checkpoint must be loadable by Trainer. |
 | `strict_resume` | `bool` | `True` | Maps to `train.strict_resume`. | Controls state-dictionary strictness. |
 | `seed` | `Optional[int]` | `42` | Maps to `train.seed`; `None` disables seed setup. | Integer or `None`; booleans are rejected. |
+| `cudnn_deterministic` | `bool` | `True` | Maps to `train.cudnn_deterministic`; selects deterministic cuDNN algorithms. LEDNet YAML overrides to `False`. | Applied only when `seed` is not `None`; cuDNN flags are process-wide. |
+| `cudnn_benchmark` | `bool` | `False` | Maps to `train.cudnn_benchmark`; benchmarks cuDNN algorithms. LEDNet YAML overrides to `True`. | Applied only when `seed` is not `None`; benchmarking does not guarantee reproducibility. |
 | `device` | `Union[str, torch.device]` | best available device | Maps to `train.device`; default preference is CUDA, then MPS, then CPU. | Requesting unavailable CUDA/MPS raises `RuntimeError`. |
 | `device_ids` | `Optional[Union[List[int], Tuple[int, ...]]]` | `None` | Maps to `train.device_ids`; two or more CUDA indices enable single-process `DataParallel`. | Must be non-empty, unique, non-negative, available CUDA indices; the first entry must match an explicitly indexed `device`. |
 | `progress_bar` | `bool` | `True` | Maps to `train.progress_bar`. | Controls tqdm training/validation bars. |
 | `model`, `loss`, `optimizer`, `scheduler`, `train` as dictionaries | `Dict[str, Any]` | corresponding default section | A dictionary under one of these names merges directly into that nested section instead of acting as its flat alias. | Section values must be dictionaries after merging. |
 
 Any unknown flat `**kwargs` key raises `TypeError`; it is never silently ignored.
+
+### Optional CommonDataset preprocessing
+
+Pass these constructor arguments through shared `data_params` (`data.params`) or split-specific `train_params` / `val_params`. Split-specific values override shared values; they are not new flat Trainer arguments.
+
+| Argument | Type | Default | Behavior / constraints |
+| --- | --- | --- | --- |
+| `mean` | `Optional[Sequence[float]]` | `None` | Normalize input and GT tensors using these finite channel means. Supply together with `std`; both sequences must have matching non-empty lengths and be compatible with image channels. |
+| `std` | `Optional[Sequence[float]]` | `None` | Per-channel standard deviations; must be finite and positive. Applied after the separate image transforms, including custom ones. |
+| `crop_size` | `Optional[int]` | `None` | Shared random square crop before custom common transforms and tensor conversion. Must be a positive non-boolean integer. Undersized images or unequal paired dimensions raise `ValueError`. |
+| `use_flip` | `bool` | `False` | Shared horizontal flip with probability 0.5. |
+| `use_rot` | `bool` | `False` | Shared vertical flip and spatial transpose, each independently enabled with probability 0.5. |
+
+Spatial operations run in the order crop, horizontal flip, vertical flip, transpose, then the existing `common_transform`; resize/separate image transforms and optional normalization follow. These options apply to every split where supplied, so put random operations in `train_params` to exclude validation. LEDNet YAML configures mean/std 0.5 for both splits and enables only training crop/augmentation. Its saved model `image_range="minus_one_one"` lets Predictor convert ranges automatically; custom training mean/std and model range metadata must remain consistent.
 
 ## Returns
 

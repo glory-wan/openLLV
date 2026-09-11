@@ -2,8 +2,11 @@
 
 import tempfile
 import unittest
+from itertools import product
 from pathlib import Path
+from unittest.mock import patch
 
+import numpy as np
 import torch
 from PIL import Image
 
@@ -317,6 +320,47 @@ class BaseDatasetPairingTests(unittest.TestCase):
 
 
 class BaseDatasetItemAndTransformTests(unittest.TestCase):
+    def test_paired_crop_and_all_flip_transpose_combinations(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir, target_dir = make_pair_layout(temp_dir)
+            pixels = np.arange(80, dtype=np.uint8).reshape(8, 10)
+            pixels = np.repeat(pixels[..., None], 3, axis=2)
+            Image.fromarray(pixels).save(input_dir / "sample.png")
+            Image.fromarray(255 - pixels).save(target_dir / "sample.png")
+            dataset = CommonDataset(
+                temp_dir, crop_size=3, use_flip=True, use_rot=True,
+                mean=[0.5] * 3, std=[0.5] * 3,
+            )
+            for horizontal, vertical, transpose in product((False, True), repeat=3):
+                with self.subTest(h=horizontal, v=vertical, t=transpose), patch(
+                    "random.randint", side_effect=[2, 4],
+                ), patch("random.random", side_effect=[
+                    0.1 if flag else 0.9 for flag in (horizontal, vertical, transpose)
+                ]):
+                    source, target, _ = dataset[0]
+                expected = pixels[2:5, 4:7]
+                if horizontal:
+                    expected = expected[:, ::-1]
+                if vertical:
+                    expected = expected[::-1]
+                if transpose:
+                    expected = expected.transpose(1, 0, 2)
+                expected = torch.from_numpy(expected.copy()).permute(2, 0, 1).float() / 127.5 - 1
+                torch.testing.assert_close(source, expected)
+                torch.testing.assert_close(target, -source)
+
+    def test_paired_crop_rejects_small_and_mismatched_images(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, target_dir = make_pair_layout(temp_dir)
+            with self.assertRaisesRegex(ValueError, "smaller than crop_size"):
+                CommonDataset(temp_dir, crop_size=256)[0]
+            Image.new("RGB", (9, 6)).save(target_dir / "sample.png")
+            with self.assertRaisesRegex(ValueError, "matching input/target sizes"):
+                CommonDataset(temp_dir, crop_size=3)[0]
+            for kwargs in ({"mean": [0.5]}, {"mean": [0.5], "std": [0]}, {"crop_size": 0}):
+                with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                    CommonDataset(temp_dir, **kwargs)
+
     def test_getitem_returns_tensors_and_filename(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             make_pair_layout(temp_dir)

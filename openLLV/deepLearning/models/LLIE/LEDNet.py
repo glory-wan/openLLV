@@ -423,6 +423,7 @@ class LEDNet(LLVModel):
             'connection': False,  # Whether to use skip connections
             'use_side_loss': False,  # Whether to use side supervision for training
             'mode': 'inference',  # Mode: 'train' or 'inference'
+            'image_range': 'zero_one',  # Raw input/output range; used by Predictor
             'kernel_size': 5,  # Kernel size for dynamic convolution
             'curve_n': 3,  # Number of curve iterations in attention
             'ppm_bins': (1, 2, 3, 6),  # Bin sizes for Pyramid Pooling Module
@@ -436,6 +437,9 @@ class LEDNet(LLVModel):
             ValueError: If a configuration value is invalid.
         """
         super()._validate_config()
+
+        if self.config['image_range'] not in ['zero_one', 'minus_one_one']:
+            raise ValueError("'image_range' must be 'zero_one' or 'minus_one_one'")
 
         if len(self.config['channels']) != 4:
             raise ValueError("'channels' must be a list of 4 integers")

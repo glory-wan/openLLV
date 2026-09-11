@@ -5,6 +5,7 @@ model:
     channels: [32, 64, 128, 128]
     connection: false
     use_side_loss: true
+    image_range: minus_one_one
 data:
   dataset: CommonDataset
   root_dir: path/to/your/dataset
@@ -14,6 +15,13 @@ data:
   workers: 4
   pin_memory: true
   return_filename: true
+  params:
+    mean: [0.5, 0.5, 0.5]
+    std: [0.5, 0.5, 0.5]
+  train_params:
+    crop_size: 256
+    use_flip: true
+    use_rot: true
 loss:
   name: lednet
   params:
@@ -23,7 +31,7 @@ loss:
     use_side_loss: true
     use_perceptual: true
     pretrained_vgg: true
-    range_norm: false
+    range_norm: true
   output_index: null
   output_key: null
 optimizer:
@@ -47,4 +55,6 @@ train:
   grad_clip: null
   amp: false
   seed: 10
+  cudnn_deterministic: false
+  cudnn_benchmark: true
   resume: null

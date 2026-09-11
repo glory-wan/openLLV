@@ -607,6 +607,9 @@ class Predictor:
                 f"got {type(model_kwargs)!r}."
             )
 
+        signed_range = self.model.config.get("image_range", "zero_one") == "minus_one_one"
+        if signed_range:
+            tensor = tensor * 2.0 - 1.0
         with torch.inference_mode():
             output = self.model(tensor, **resolved_kwargs)
 
@@ -616,7 +619,7 @@ class Predictor:
                 "Model prediction must be a torch.Tensor, "
                 f"got {type(prediction)!r}."
             )
-        return prediction
+        return (prediction + 1.0) / 2.0 if signed_range else prediction
 
     @staticmethod
     def _split_batch_prediction(
@@ -818,7 +821,7 @@ class Predictor:
 
     @staticmethod
     def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
-        """Convert one prediction tensor in ``[0, 1]`` to a PIL image."""
+        """Clamp to ``[0, 1]``, scale by 255, round, and convert to uint8."""
         if tensor.ndim == 4:
             if tensor.shape[0] != 1:
                 raise ValueError(
@@ -837,7 +840,7 @@ class Predictor:
         array = tensor.numpy()
 
         if channels == 1:
-            image = np.clip(array[0] * 255.0, 0, 255).astype(np.uint8)
+            image = np.clip(array[0] * 255.0, 0, 255).round().astype(np.uint8)
             return Image.fromarray(image, mode="L")
         if channels not in {3, 4}:
             raise ValueError(
@@ -846,7 +849,7 @@ class Predictor:
             )
 
         image = np.transpose(array, (1, 2, 0))
-        image = np.clip(image * 255.0, 0, 255).astype(np.uint8)
+        image = np.clip(image * 255.0, 0, 255).round().astype(np.uint8)
         return Image.fromarray(image, mode="RGB" if channels == 3 else "RGBA")
 
     @staticmethod

@@ -39,7 +39,7 @@ class VGG19PerceptualLoss(nn.Module):
         perceptual_weight: float = 0.01,
         pretrained: bool = True,
         use_input_norm: bool = True,
-        range_norm: bool = False,
+        range_norm: bool = True,
     ) -> None:
         """Initialize VGG19 perceptual loss.
 
@@ -49,7 +49,8 @@ class VGG19PerceptualLoss(nn.Module):
             pretrained: Whether to load ImageNet-pretrained VGG19 weights.
             use_input_norm: Whether to normalize inputs with ImageNet mean and
                 standard deviation.
-            range_norm: Whether to map inputs from ``[-1, 1]`` to ``[0, 1]``.
+            range_norm: Apply ``(x + 1) / 2`` before ImageNet normalization
+                without clipping. Defaults to True, matching the released config.
         """
         super().__init__()
         self.layer_weights = dict(layer_weights or self.DEFAULT_LAYER_WEIGHTS)
@@ -110,7 +111,6 @@ class VGG19PerceptualLoss(nn.Module):
 
         if self.range_norm:
             image = (image + 1.0) / 2.0
-        image = image.clamp(0.0, 1.0)
 
         if self.use_input_norm:
             image = (image - self.mean) / self.std
@@ -145,7 +145,7 @@ class LEDNet_Loss(BaseLoss):
         use_perceptual: bool = True,
         pretrained_vgg: bool = True,
         layer_weights: Optional[Dict[str, float]] = None,
-        range_norm: bool = False,
+        range_norm: bool = True,
         use_input_norm: bool = True,
     ) -> None:
         """Initialize LEDNet loss.
@@ -158,8 +158,8 @@ class LEDNet_Loss(BaseLoss):
             use_perceptual: Whether to enable VGG perceptual loss.
             pretrained_vgg: Whether to load ImageNet-pretrained VGG19 weights.
             layer_weights: Optional VGG layer weights.
-            range_norm: Whether to map perceptual inputs from ``[-1, 1]`` to
-                ``[0, 1]``.
+            range_norm: Apply ``(x + 1) / 2`` to perceptual inputs without
+                clipping. Defaults to True; pixel loss uses unmodified inputs.
             use_input_norm: Whether to apply ImageNet normalization before VGG.
         """
         super().__init__()

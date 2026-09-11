@@ -51,7 +51,7 @@ Registered names are matched case-insensitively (and punctuation-insensitively f
 ## Returns
 
 - **Single image**: `(image, saved_path)`.
-  - Deep backend: `image` is a `PIL.Image.Image`.
+  - Deep backend: `image` is a `PIL.Image.Image`. Grayscale, RGB, and RGBA tensors are clamped to `[0,1]`, multiplied by 255, rounded to the nearest integer (ties to even), and cast to `uint8`, including when `save=False`. For model config `image_range="minus_one_one"` (saved by the LEDNet training YAML), Predictor first maps preprocessed `[0,1]` input to `[-1,1]` and restores the network output with `(output+1)/2`. Custom transforms must not duplicate that normalization. A missing range marker or `"zero_one"` leaves tensor ranges unchanged.
   - Traditional backend: `image` is a RGB `numpy.ndarray`.
   - `saved_path` is a `Path`, or `None` when `save=False`.
 - **Directory input** follows deterministic source-path order and preserves relative subdirectories.

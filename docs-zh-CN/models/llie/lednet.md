@@ -39,16 +39,13 @@ enhanced, saved_path = llv.predict(
 )
 ```
 
-训练示例：
+训练示例（内置配置将输入/GT 归一化至 `[-1,1]`，仅对训练启用成对 `256×256` 裁剪和同步增强，详见[参考说明](../../reference/models/lednet.md)）：
 
 ```python
 llv.train(
-    model="LEDNet",
-    dataset="CommonDataset",
+    config="LEDNet",
     root_dir="datasets/my_dataset",
-    loss="lednet",
     epochs=10,
     batch_size=4,
 )
 ```
-

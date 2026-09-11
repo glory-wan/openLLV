@@ -51,7 +51,7 @@ openLLV.predict(method, source, output=None, **kwargs)
 ## Returns
 
 - **单图**：`(image, saved_path)`。
-  - 深度后端：`image` 为 `PIL.Image.Image`。
+  - 深度后端：`image` 为 `PIL.Image.Image`。灰度、RGB、RGBA 张量依次截断至 `[0,1]`、乘 255、舍入至最近整数（中点取偶数）、转为 `uint8`；`save=False` 也遵循此规则。模型配置为 `image_range="minus_one_one"` 时（LEDNet 训练 YAML 会保存此标记），Predictor 先将预处理后的 `[0,1]` 输入映射到 `[-1,1]`，并以 `(output+1)/2` 恢复网络输出。自定义 transform 不应重复执行该归一化。缺少标记或设为 `"zero_one"` 时不转换张量值域。
   - 传统后端：`image` 为 RGB `numpy.ndarray`。
   - `saved_path` 为 `Path`；`save=False` 时为 `None`。
 - **目录输入**按确定的源路径顺序返回，并保留相对子目录。

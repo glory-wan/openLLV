@@ -164,7 +164,11 @@ class Trainer:
         self.training_started_at: Optional[str] = None
         self.training_ended_at: Optional[str] = None
 
-        self._set_seed(self.config["train"].get("seed"))
+        self._set_seed(
+            self.config["train"].get("seed"),
+            cudnn_deterministic=self.config["train"]["cudnn_deterministic"],
+            cudnn_benchmark=self.config["train"]["cudnn_benchmark"],
+        )
 
         self.model = self._build_model()
         self.training_model = self._build_training_model()
@@ -296,6 +300,8 @@ class Trainer:
             "resume_path": ("train", "resume"),
             "strict_resume": ("train", "strict_resume"),
             "seed": ("train", "seed"),
+            "cudnn_deterministic": ("train", "cudnn_deterministic"),
+            "cudnn_benchmark": ("train", "cudnn_benchmark"),
             "device": ("train", "device"),
             "device_ids": ("train", "device_ids"),
             "progress_bar": ("train", "progress_bar"),
@@ -503,11 +509,18 @@ class Trainer:
         self.output_dir = Path(output_dir)
 
     @staticmethod
-    def _set_seed(seed: Optional[int] = 42) -> None:
-        """Set random seeds for reproducible training.
+    def _set_seed(
+        seed: Optional[int] = 42,
+        *,
+        cudnn_deterministic: bool = True,
+        cudnn_benchmark: bool = False,
+    ) -> None:
+        """Set random seeds and configure cuDNN algorithm selection.
 
         Args:
-            seed: Optional random seed. If None, no seed is set.
+            seed: Optional random seed. If None, leave seeds and cuDNN unchanged.
+            cudnn_deterministic: Require deterministic cuDNN algorithms.
+            cudnn_benchmark: Enable cuDNN algorithm benchmarking.
         """
         if seed is None:
             return
@@ -517,9 +530,10 @@ class Trainer:
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = cudnn_deterministic
+        torch.backends.cudnn.benchmark = cudnn_benchmark
 
     def _cancellation_requested(self) -> bool:
         """Return whether external cancellation has been requested."""

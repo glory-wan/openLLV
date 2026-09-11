@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import inspect
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import torch
 
@@ -100,6 +102,30 @@ class LLIELossPackageTests(unittest.TestCase):
                     BaseLoss.create_loss(alias, **kwargs),
                     expected_class,
                 )
+
+
+class LEDNetPerceptualTests(unittest.TestCase):
+    def test_default_range_conversion_preserves_out_of_range_gradients(self):
+        from openLLV.deepLearning.loss.LLIELoss.LEDNet_Loss import (
+            LEDNet_Loss, VGG19PerceptualLoss, models,
+        )
+
+        with patch.object(
+            models, "vgg19",
+            return_value=SimpleNamespace(features=torch.nn.Sequential(torch.nn.Identity())),
+        ):
+            loss = LEDNet_Loss(use_input_norm=False)
+            self.assertTrue(loss.perceptual_loss.range_norm)
+            self.assertTrue(VGG19PerceptualLoss().range_norm)
+            values = torch.tensor([-3.0, -1.0, 1.0, 3.0]).view(1, 1, 1, 4)
+            prediction = values.repeat(1, 3, 1, 1).requires_grad_()
+            result = loss.perceptual_loss._preprocess(prediction)
+            expected = torch.tensor([-1.0, 0.0, 1.0, 2.0]).view(1, 1, 1, 4)
+            torch.testing.assert_close(result, expected.repeat(1, 3, 1, 1))
+            result.sum().backward()
+            torch.testing.assert_close(prediction.grad, torch.full_like(prediction, 0.5))
+            loss.perceptual_loss.range_norm = False
+            torch.testing.assert_close(loss.perceptual_loss._preprocess(prediction), prediction)
 
 
 class CommonLossTests(unittest.TestCase):

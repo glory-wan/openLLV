@@ -1,6 +1,8 @@
 """Base dataset abstractions for datasets."""
 
 import os
+import math
+import random
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -18,6 +20,7 @@ from typing import (
 
 from torch.utils.data import Dataset
 from torchvision import transforms
+from PIL import Image
 
 from openLLV.data.image_io import ImageReader
 
@@ -206,6 +209,11 @@ class BaseDataset(Dataset, ABC):
             return_filename: bool = True,
             strict_pairing: bool = True,
             image_extensions: Optional[Sequence[str]] = None,
+            mean: Optional[Sequence[float]] = None,
+            std: Optional[Sequence[float]] = None,
+            crop_size: Optional[int] = None,
+            use_flip: bool = False,
+            use_rot: bool = False,
     ):
         """Initialize a paired image dataset.
 
@@ -225,6 +233,12 @@ class BaseDataset(Dataset, ABC):
             return_filename: Whether ``__getitem__`` returns the input filename.
             strict_pairing: Raise an error when no pairs are found.
             image_extensions: Optional supported image suffixes.
+            mean: Optional per-channel mean applied to both image tensors.
+            std: Positive per-channel standard deviation; required with mean.
+            crop_size: Optional positive square size for paired random cropping.
+            use_flip: Apply a shared horizontal flip with probability 0.5.
+            use_rot: Apply shared vertical flip and transpose, each with
+                probability 0.5, after cropping and horizontal flipping.
 
         Raises:
             FileNotFoundError: If the dataset root or image directories do not
@@ -236,14 +250,31 @@ class BaseDataset(Dataset, ABC):
         self.return_filename = return_filename
         self.strict_pairing = strict_pairing
         self.common_transform = common_transform
+        if crop_size is not None and (
+            isinstance(crop_size, bool) or not isinstance(crop_size, int) or crop_size <= 0
+        ):
+            raise ValueError("crop_size must be a positive integer or None.")
+        if (mean is None) != (std is None):
+            raise ValueError("mean and std must be provided together.")
+        if mean is not None and (
+            not mean or len(mean) != len(std)
+            or not all(math.isfinite(v) for v in mean)
+            or not all(math.isfinite(v) and v > 0 for v in std)
+        ):
+            raise ValueError("mean/std must have matching non-empty lengths and finite values; std must be positive.")
+        self.crop_size = crop_size
+        self.use_flip = use_flip
+        self.use_rot = use_rot
         self.resize_size = self.normalize_resize_size(resize)
         self.transform_input = self._build_image_transform(
             self.resize_size,
             transform_input,
+            mean, std,
         )
         self.transform_target = self._build_image_transform(
             self.resize_size,
             transform_target,
+            mean, std,
         )
         self.image_reader = ImageReader()
 
@@ -385,6 +416,32 @@ class BaseDataset(Dataset, ABC):
         """
         return self.image_reader(str(path), output_format="pil")
 
+    def _paired_spatial_transform(self, input_image, target_image):
+        """Crop and augment PIL images using one set of shared random choices."""
+        if self.crop_size is None and not self.use_flip and not self.use_rot:
+            return input_image, target_image
+        if target_image is not None and input_image.size != target_image.size:
+            raise ValueError("Paired spatial transforms require matching input/target sizes.")
+        images = [input_image, target_image]
+        if self.crop_size is not None:
+            width, height = input_image.size
+            size = self.crop_size
+            if min(width, height) < size:
+                raise ValueError(f"Image size {input_image.size} is smaller than crop_size={size}.")
+            top = random.randint(0, height - size)
+            left = random.randint(0, width - size)
+            box = (left, top, left + size, top + size)
+            images = [im.crop(box) if im is not None else None for im in images]
+        operations = (
+            (self.use_flip and random.random() < 0.5, Image.Transpose.FLIP_LEFT_RIGHT),
+            (self.use_rot and random.random() < 0.5, Image.Transpose.FLIP_TOP_BOTTOM),
+            (self.use_rot and random.random() < 0.5, Image.Transpose.TRANSPOSE),
+        )
+        for enabled, operation in operations:
+            if enabled:
+                images = [im.transpose(operation) if im is not None else None for im in images]
+        return tuple(images)
+
     def _apply_common_transform(self, input_image, target_image):
         """Apply a transform shared by input and target images.
 
@@ -466,11 +523,14 @@ class BaseDataset(Dataset, ABC):
     def _build_image_transform(
             resize_size: Optional[Tuple[int, int]],
             image_transform: Optional[Callable],
+            mean: Optional[Sequence[float]] = None,
+            std: Optional[Sequence[float]] = None,
     ) -> Callable:
         """Combine optional resizing with an image transform.
 
         The default final transform is ``ToTensor``. A caller-provided image
         transform replaces ``ToTensor`` while retaining the configured resize.
+        Optional mean/std normalization is applied last to both branches.
         """
         operations = []
         if resize_size is not None:
@@ -486,6 +546,8 @@ class BaseDataset(Dataset, ABC):
             if image_transform is not None
             else transforms.ToTensor()
         )
+        if mean is not None:
+            operations.append(transforms.Normalize(mean, std))
         return transforms.Compose(operations)
 
     def _apply_transform(self, image, transform: Optional[Callable]):
@@ -531,6 +593,7 @@ class BaseDataset(Dataset, ABC):
             self._read_image(target_path) if target_path is not None else None
         )
 
+        input_image, target_image = self._paired_spatial_transform(input_image, target_image)
         input_image, target_image = self._apply_common_transform(
             input_image,
             target_image,
