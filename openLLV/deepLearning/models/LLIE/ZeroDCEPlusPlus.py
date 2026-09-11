@@ -35,7 +35,7 @@ class ZeroDCEPlusPlus(LLVModel):
         default_config = super()._get_default_config()
         default_config.update({
             'number_f': 32,
-            'scale_factor': 1,
+            'scale_factor': 12,
             'initialize_weights': False,
             'mode': 'inference'
         })
@@ -102,7 +102,6 @@ class ZeroDCEPlusPlus(LLVModel):
     def _init_model(self):
         """Initialize Zero-DCE++ network layers."""
         number_f = self.config['number_f']
-        scale_factor = self.config['scale_factor']
 
         self.e_conv1 = self.CSDN_Tem(self.config['input_channels'], number_f)
         self.e_conv2 = self.CSDN_Tem(number_f, number_f)
@@ -113,7 +112,6 @@ class ZeroDCEPlusPlus(LLVModel):
         self.e_conv7 = self.CSDN_Tem(number_f * 2, 3)
 
         self.relu = nn.ReLU(inplace=True)
-        self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
 
         if self.config['initialize_weights']:
             self.apply(self._init_weights)
@@ -178,7 +176,8 @@ class ZeroDCEPlusPlus(LLVModel):
         x_r = F.tanh(self.e_conv7(torch.cat([x1, x6], 1)))
 
         if scale_factor != 1:
-            x_r = self.upsample(x_r)
+            # Restore the input size even when it is not divisible by the factor.
+            x_r = F.interpolate(x_r, size=x.shape[-2:], mode='bilinear', align_corners=True)
 
         enhance_image = self._enhance(x, x_r)
 

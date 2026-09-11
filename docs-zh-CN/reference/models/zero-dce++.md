@@ -25,7 +25,9 @@ Zero-DCE++ 是基于深度可分离卷积的紧凑曲线估计网络，注册名
 
 ## Implementation Notes
 
-`ZeroDCEPlusPlus(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个深度可分离卷积块估计一个三通道曲线图，再执行八次二次更新。与官方实现一致，任一模式下只要 `scale_factor != 1`，都会先按 `1 / scale_factor` 缩放输入，在该分辨率估计曲线图，再按 `scale_factor` 缩放曲线图并增强原图。可选的卷积权重初始化使用 $N(0, 0.02)$，默认关闭。无参考损失基于增强图像计算曝光控制项，目标值为 `0.6`。训练返回含增强结果与曲线图的标准字典，推理返回张量。
+`ZeroDCEPlusPlus(config=None, **kwargs)` 在 `config` 之后合并关键字覆盖值。七个深度可分离卷积块估计一个三通道曲线图，再执行八次二次更新。训练和推理的默认 `scale_factor` 均为 `12`。当其不为 `1` 时，先按 `1 / scale_factor` 缩放输入以估计曲线图，再使用 `align_corners=True` 的双线性插值将曲线图直接恢复到原始输入尺寸，保留官方上采样的对齐语义，同时支持尺寸不能被缩放因子整除的情况（包括 512 与缩放因子 12）。不裁剪图像。可选的卷积权重初始化使用 $N(0, 0.02)$，默认关闭。无参考损失基于增强图像计算曝光控制项，目标值为 `0.6`。训练返回含增强结果与曲线图的标准字典，推理返回张量。
+
+内置 `ZeroDCE++.yaml` 设置 `model.params.scale_factor: 12` 和 `data.resize: [512, 512]`，使用数据集的抗锯齿双线性缩放，将训练及验证图像统一调整为 512×512。Adam 使用 `lr: 0.0001`、`weight_decay: 0.0001`；`scheduler.name: null` 保持学习率不变；`train.grad_clip: 0.1` 对全局梯度范数进行裁剪。这些默认值均可覆盖。因此该配置的训练缩放因子为 12，而官方训练脚本默认为 1。
 
 ## Parameters
 
@@ -37,7 +39,7 @@ Zero-DCE++ 是基于深度可分离卷积的紧凑曲线估计网络，注册名
 | `input_channels` | `int` | `3` | 第一深度卷积块接受的通道数。 | 必须为正整数；实际必须为 `3`，因为曲线输出与图像运算为三通道。 |
 | `save_dir` | `str` | `"./checkpoints/llie/ZeroDCEPlusPlus"` | 默认检查点/配置输出目录。 | 构造时不校验。 |
 | `number_f` | `int` | `32` | 曲线估计网络特征宽度。 | 必须可比较且大于 `0`，否则抛 `ValueError`。 |
-| `scale_factor` | `int | float` | `1` | 训练和推理共同使用的输入倒数缩放及曲线图缩放倍数。 | 必须可比较且大于 `0`，否则抛 `ValueError`；非 `1` 时，输入尺寸须经两次缩放后与原图尺寸一致。 |
+| `scale_factor` | `int \| float` | `12` | 训练和推理共同使用的输入下采样因子；曲线图恢复到输入的精确尺寸。 | 必须可比较且大于 `0`，否则抛 `ValueError`；缩放后的高、宽均须至少为 1，输入尺寸不必被缩放因子整除。 |
 | `initialize_weights` | `bool` | `False` | 构造时是否将全部卷积权重按 $N(0, 0.02)$ 初始化。 | 必须为布尔值，否则抛 `TypeError`；偏置保留 PyTorch 默认初始化。 |
 | `mode` | `str` | `"inference"` | 选择训练字典或推理张量输出契约。 | 只能是 `"train"` 或 `"inference"`，否则抛 `ValueError`。 |
 
@@ -61,9 +63,9 @@ enhanced, saved_path = llv.predict(
 ```python
 import openLLV as llv
 
-result = llv.train("ZeroDCEPlusPlus", model_params={"mode": "train", "scale_factor": 1})
+result = llv.train("ZeroDCEPlusPlus", root_dir="datasets/my_dataset")
 ```
 
 ## Checkpoint / Official Weights
 
-将 openLLV `.pt` 或 `.pth` 检查点传给 `llv.predict`；显式 predictor 配置覆盖已保存值。未实现官方权重下载器。
+将 openLLV `.pt` 或 `.pth` 检查点传给 `llv.predict`；显式 predictor 配置覆盖已保存值。未覆盖时，预测沿用模型/检查点中的缩放因子，包括旧检查点保存的 `1`；仅在未保存也未提供该参数时，才使用默认值 `12`。未实现官方权重下载器。
