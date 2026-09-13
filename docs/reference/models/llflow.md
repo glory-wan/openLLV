@@ -20,7 +20,8 @@ Trainer and both Predictor interfaces are unchanged.
 | Item | Location |
 | --- | --- |
 | Implementation | `openLLV/deepLearning/models/LLIE/LLFlow.py` |
-| Official modules and licenses | `openLLV/deepLearning/models/LLIE/_llflow/` |
+| Official layers and helpers | Consolidated in `openLLV/deepLearning/models/LLIE/LLFlow.py` |
+| Licenses | `openLLV/deepLearning/models/LLIE/LLFlow.LICENSE` |
 | Class / registered name | LLFlow, case-insensitive, no aliases |
 | Base class | LLVModel in `openLLV/deepLearning/models/BaseModel.py` |
 | Loss | `openLLV/deepLearning/loss/LLIELoss/LLFlow_Loss.py` |
@@ -34,6 +35,8 @@ the image, applies two ActNorm/invertible 1x1 convolution steps without coupling
 then twelve CondAffineSeparatedAndCond steps. Splitting is disabled. The latent
 has 192 channels at one-eighth the input height and width.
 
+Histogram equalization, log transformation and padding helpers are defined in
+`openLLV/data/datasets/LLFlowDataset.py` and shared by the dataset and model.
 Preprocessing concatenates log(low + 0.001) and per-channel OpenCV histogram
 equalization. The encoder also computes color and gradient/noise maps.
 LLFlowDataset equalizes the full image before synchronously cropping/flipping
@@ -160,4 +163,4 @@ Preserves RRDB.* and flowUpsamplerNet.* names/shapes, including unused official
 parameters for strict generator loading. Use LOL-pc weights, not LOL_smallNet.
 Random initialization supports training; meaningful inference needs trained
 weights. Official code retains CC BY-NC-SA 4.0 and bundled component licenses;
-see _llflow/NOTICE.md and licenses/.
+see `openLLV/deepLearning/models/LLIE/LLFlow.LICENSE`.

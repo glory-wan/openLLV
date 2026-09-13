@@ -10,13 +10,12 @@ import torch
 from PIL import Image
 
 from openLLV.data.datasets import LLFlowDataset
-from openLLV.data.llflow_preprocessing import prepare_llflow_input, reflect_pad16
+from openLLV.data.datasets.LLFlowDataset import prepare_llflow_input, reflect_pad16
 from openLLV.deepLearning.config import load_config
 from openLLV.deepLearning.loss.LLIELoss.LLFlow_Loss import LLFlow_Loss
-from openLLV.deepLearning.models.LLIE.LLFlow import LLFlow
-from openLLV.deepLearning.models.LLIE._llflow.FlowActNorms import ActNorm2d
-from openLLV.deepLearning.models.LLIE._llflow.Permutations import InvertibleConv1x1
-from openLLV.deepLearning.models.LLIE._llflow.flow import squeeze2d
+from openLLV.deepLearning.models.LLIE.LLFlow import (
+    ActNorm2d, InvertibleConv1x1, LLFlow, squeeze2d,
+)
 from openLLV.deepLearning.trainer import Trainer
 from openLLV.predictor import Predictor
 

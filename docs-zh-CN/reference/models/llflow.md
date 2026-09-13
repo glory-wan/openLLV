@@ -20,7 +20,8 @@ Trainer、统一 Predictor 和深度学习 Predictor 均未修改。
 | 项目 | 位置 |
 | --- | --- |
 | 实现 | `openLLV/deepLearning/models/LLIE/LLFlow.py` |
-| 官方模块与许可证 | `openLLV/deepLearning/models/LLIE/_llflow/` |
+| 官方层与辅助函数 | 合并在 `openLLV/deepLearning/models/LLIE/LLFlow.py` 中 |
+| 许可证 | `openLLV/deepLearning/models/LLIE/LLFlow.LICENSE` |
 | 类名 / 注册名 | LLFlow，大小写不敏感，无别名 |
 | 基类 | `openLLV/deepLearning/models/BaseModel.py` 中的 LLVModel |
 | 损失 | `openLLV/deepLearning/loss/LLIELoss/LLFlow_Loss.py` |
@@ -33,6 +34,8 @@ ConEncoder1 使用 64 通道、24 个 RRDB，将 block 1/3/5/7 的特征与各�
 卷积步骤、十二个 CondAffineSeparatedAndCond 步骤。关闭 split；
 最终 latent 为 192 通道，高宽均为输入的 1/8。
 
+直方图均衡、对数变换和补边函数统一定义于
+`openLLV/data/datasets/LLFlowDataset.py`，由数据集和模型共用。
 预处理拼接 log(low + 0.001) 与 OpenCV 逐通道直方图均衡结果，编码器再
 计算颜色和梯度/噪声图。LLFlowDataset 先对整张图均衡，再同步裁剪/翻转
 low、GT 和均衡图。支持 LOL 的 our485/low、our485/high、eval15/low、
@@ -149,4 +152,4 @@ train_RRDB=false、train_RRDB_delay 在官方标准执行路径中也未冻结�
 保留 RRDB.*、flowUpsamplerNet.* 参数名和形状，包括官方未使用参数，
 以支持严格加载生成器权重。应使用 LOL-pc 权重，而非 LOL_smallNet。
 随机初始化可用于训练，有意义的推理需要训练好的权重。
-官方代码保留 CC BY-NC-SA 4.0 及其组件许可证，见 _llflow/NOTICE.md 和 licenses/。
+官方代码保留 CC BY-NC-SA 4.0 及其组件许可证，见 `openLLV/deepLearning/models/LLIE/LLFlow.LICENSE`。
