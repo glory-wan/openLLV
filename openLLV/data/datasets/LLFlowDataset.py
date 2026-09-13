@@ -1,7 +1,6 @@
 """Paired LOL data preparation for the official standard LLFlow model.
 
 Adapted from wyf0912/LLFlow (115da161), CC BY-NC-SA 4.0.
-See deepLearning/models/LLIE/LLFlow.LICENSE.
 """
 
 import cv2
