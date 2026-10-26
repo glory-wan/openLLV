@@ -56,10 +56,10 @@ Select a packaged configuration by name:
 python -m openLLV.cli train ZeroDCE --kwargs root_dir=datasets/my_dataset epochs=10 batch_size=4 device=cuda
 ```
 
-Or provide a YAML path:
+Or provide the path to a YAML file you created:
 
 ```bash
-python -m openLLV.cli train configs/experiment.yaml --kwargs lr=5e-5 amp=true
+python -m openLLV.cli train path/to/experiment.yaml --kwargs lr=5e-5 amp=true
 ```
 
 ## Evaluate

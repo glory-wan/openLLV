@@ -58,7 +58,7 @@ Built-in names are case-insensitive and punctuation-insensitive. For example, `"
 
 ```python
 result = llv.train(
-    "configs/experiment.yaml",
+    "path/to/experiment.yaml",
     lr=5e-5,
     amp=True,
 )

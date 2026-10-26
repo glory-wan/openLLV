@@ -56,10 +56,10 @@ python -m openLLV.cli predict ZeroDCE images -o results/zero_dce --batch-size 4 
 python -m openLLV.cli train ZeroDCE --kwargs root_dir=datasets/my_dataset epochs=10 batch_size=4 device=cuda
 ```
 
-或者提供 YAML 路径：
+或者提供你自己创建的 YAML 文件路径：
 
 ```bash
-python -m openLLV.cli train configs/experiment.yaml --kwargs lr=5e-5 amp=true
+python -m openLLV.cli train path/to/experiment.yaml --kwargs lr=5e-5 amp=true
 ```
 
 ## 评估

@@ -17,8 +17,7 @@
     <a href="docs/guide/overview.md">English Docs</a> |
     <a href="docs-zh-CN/guide/overview.md">中文文档</a> |
     <a href="docs/usage/cli.md">CLI</a> |
-    <a href="docs/usage/cfg.md">Configuration</a> |
-    <a href="TEST_PLAN.md">Test Plan</a>
+    <a href="docs/usage/cfg.md">Configuration</a>
   </p>
 </div>
 
@@ -537,8 +536,8 @@ CLI examples:
 # Select a packaged YAML configuration by model/config name
 openllv train ZeroDCE --kwargs root_dir=datasets/my_dataset epochs=10 device=cuda
 
-# Use an explicit YAML file
-openllv train configs/experiment.yaml --kwargs lr=5e-5 amp=true
+# Use an explicit YAML file you created
+openllv train path/to/experiment.yaml --kwargs lr=5e-5 amp=true
 
 # Resume a previous experiment
 openllv train ZeroDCE --kwargs root_dir=datasets/my_dataset resume=checkpoints/ZeroDCE_CommonDataset/checkpoints/last.pt
@@ -661,7 +660,6 @@ docs/                    English documentation
 docs-zh-CN/              Chinese documentation
 examples/                Runnable examples
 test/                    Test suite
-TEST_PLAN.md             Release-level test plan
 ```
 
 ## Examples
