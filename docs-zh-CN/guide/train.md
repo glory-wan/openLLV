@@ -58,7 +58,7 @@ result = llv.train(
 
 ```python
 result = llv.train(
-    "configs/experiment.yaml",
+    "path/to/experiment.yaml",
     lr=5e-5,
     amp=True,
 )

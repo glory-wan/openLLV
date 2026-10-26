@@ -23,11 +23,11 @@
 
 ## `predict` 的 kwargs 路由（核心）
 
-`openLLV/api.py` 中 `_PREDICT_CALL_KWARGS` 集合（已核实，9 个键）：
+`openLLV/api.py` 中 `_PREDICT_CALL_KWARGS` 集合（已核实，10 个键）：
 
 ```python
 {"progress_bar", "output_name", "output_ext", "save", "model_kwargs",
- "ext", "timeout", "headers", "verify_ssl"}
+ "ext", "timeout", "headers", "verify_ssl", "cancel"}
 ```
 
 - **属于该集合的键** → 调用参数，传给 `predictor(source, output=..., **call_kwargs)`，最终到达后端 `predict_single` / `predict_batch`。
@@ -38,7 +38,7 @@
 ```python
 Predictor(target=None, *, model=None, method=None, backend="auto",
           output_dir=None, config=None, device=None, transform=None, resize=None,
-          batch_size=1, num_workers=0, **kwargs)
+          batch_size=1, workers=0, **kwargs)
 ```
 
 - `target`：模型名 / checkpoint 路径 / 算法名 / `LLVModel` 实例 / `LLVEnhancer` 实例。
@@ -51,14 +51,14 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 
 ### 深度后端 `Predictor`（`openLLV/deepLearning/predictor.py`）
 
-构造器：`Predictor(model, output_dir=None, config=None, device=None, transform=None, resize=None, batch_size=1, num_workers=0)`。
+构造器：`Predictor(model, output_dir=None, config=None, device=None, transform=None, resize=None, batch_size=1, workers=0)`。
 
 - `model`：注册名 / checkpoint（`.pt`/`.pth`）/ `LLVModel` 实例。
 - `config`：模型配置覆盖；对 checkpoint 会覆盖保存的配置。
 - `device`：`None` → CUDA 可用则 CUDA，否则 CPU。
 - `resize=None`：默认预处理只将 PIL 图像转换为浮点张量，不缩放；正整数产生正方形输入，二元 tuple/list 按 `(height, width)`，并在自定义 `transform` 前执行。
 - `batch_size`：目录输入按源尺寸分组（设置 `resize` 时按目标尺寸分组），只有完整的同尺寸组进行一次模型前向；余数及变换后尺寸不兼容的样本逐图前向，不做 padding。
-- `num_workers`：实际传给 DataLoader，用于目录图像读取和 CPU 预处理；模型推理仍在主预测器进程。
+- `workers`：实际传给 DataLoader，用于目录图像读取和 CPU 预处理；模型推理仍在主预测器进程。
 - `predict_single(image, save_path=None, *, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：`model_kwargs` 转发给模型 `forward`（其中张量值自动搬到设备）；`**reader_kwargs` 转给 `ImageReader`（`ext`、`timeout`、`headers`、`verify_ssl`）。返回 `(PIL.Image, Path|None)`。
 - `predict_batch(input_dir, output_dir=None, *, progress_bar=True, output_name=None, output_ext=None, save=True, transform=None, model_kwargs=None, **reader_kwargs)`：递归处理并保留相对子目录。`output_name` 非 `None` 抛 `ValueError`；未指定 `output_ext` 时逐字符保留源文件名和后缀（含大小写），指定时为全部文件替换后缀并保留参数大小写。`save=True` 返回按源路径排序的 `Path` 列表；`save=False` 不创建输出文件/目录并返回同序 `PIL.Image` 列表。
 
@@ -83,7 +83,7 @@ Predictor(target=None, *, model=None, method=None, backend="auto",
 | `model_params` | `model.params` |
 | `dataset` / `dataset_name` | `data.dataset` |
 | `root_dir` | `data.root_dir` |
-| `batch_size` / `num_workers` / `pin_memory` / `shuffle` / `drop_last` | `data.*` |
+| `batch_size` / `workers` / `pin_memory` / `shuffle` / `drop_last` | `data.*` |
 | `train_split` / `val_split` / `return_filename` | `data.*` |
 | `resize` | `data.resize`（int=方形，`[h, w]`=显式尺寸） |
 | `train_input_dir` / `train_target_dir` / `val_input_dir` / `val_target_dir` | `data.*` |
@@ -104,7 +104,7 @@ kwargs 全部转给 `Evaluator`（`openLLV/evaluation/evaluator.py`）：
 
 ```python
 Evaluator(en_img_dir, ref_img_dir=None, save_path=None, metrics=None,
-          device=None, batch_size=1, num_workers=8, **kwargs)
+          device=None, batch_size=1, workers=8, **kwargs)
 ```
 
 - `metrics`：`None` → `["PSNR", "SSIM"]`；字符串自动转大写；列表逐项大写；其它类型抛 `TypeError`。不存在的指标名告警跳过。
